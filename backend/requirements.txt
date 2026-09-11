@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+psycopg2-binary
+pydantic
+pydantic-settings
+python-multipart
+websockets
+httpx
+numpy
+scikit-learn
+Pillow
+python-dotenv
+shapely
+geojson
+google-generativeai
+aiofiles
