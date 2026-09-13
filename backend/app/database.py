@@ -1,29 +1,35 @@
-from sqlmodel import SQLModel, create_engine, Session
-from app.config import get_settings
-import os
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from app.config import settings
 
-settings = get_settings()
-
-# Use SQLite fallback if PostgreSQL is not available
-# This lets you start immediately without Docker
-DB_URL = settings.database_url
-
-# For local dev without PostgreSQL, uncomment next line:
-# DB_URL = "sqlite:///./signal_os.db"
-
-engine = create_engine(
-    DB_URL,
-    echo=(settings.app_env == "development"),
-    pool_pre_ping=True,
+# Create Async Engine for PostGIS
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=(settings.APP_ENV == "development"),
+    future=True,
+    pool_size=10,
+    max_overflow=20
 )
 
+# Async Session Factory
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False
+)
 
-def create_db_and_tables():
-    """Create all tables on startup."""
-    SQLModel.metadata.create_all(engine)
+Base = declarative_base()
 
-
-def get_session():
-    """Dependency: yields a DB session per request."""
-    with Session(engine) as session:
-        yield session
+# Dependency for FastAPI Endpoints
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

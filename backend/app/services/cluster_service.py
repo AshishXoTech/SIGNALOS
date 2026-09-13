@@ -1,169 +1,113 @@
-"""
-Clustering Service — Groups nearby verified reports into Incidents.
-Uses DBSCAN on GPS coordinates + time window.
-"""
-from sqlmodel import Session, select
-from app.models import Report, Incident
-from app.services.llm_service import generate_incident_summary
-from app.config import get_settings
+import logging
+import uuid
 from datetime import datetime, timedelta
+from typing import List
 import numpy as np
 from sklearn.cluster import DBSCAN
-import math
-import logging
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_, func
 
-logger = logging.getLogger(__name__)
-settings = get_settings()
+from app.config import settings
+from app.models.report import Report, ReportStatus
+from app.models.incident import Incident, IncidentSeverity, IncidentStatus
 
-
-def _haversine_km(lat1, lng1, lat2, lng2):
-    """Haversine distance in kilometers."""
-    R = 6371.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lng2 - lng1)
-    a = (math.sin(dphi / 2) ** 2 +
-         math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2)
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+logger = logging.getLogger("signal_os.cluster")
 
 
-def run_clustering(session: Session) -> list[Incident]:
-    """
-    Run DBSCAN clustering on recent verified/likely reports.
-    Creates or updates Incident records.
-    Returns list of new/updated incidents.
-    """
-    time_window = datetime.utcnow() - timedelta(
-        minutes=settings.cluster_time_window_minutes * 2
-    )
+class ClusterService:
+    def __init__(self):
+        self.eps_km = settings.CLUSTER_EPS_KM
+        self.min_samples = settings.CLUSTER_MIN_SAMPLES
+        self.time_window_hours = settings.CLUSTER_TIME_WINDOW_HOURS
 
-    # Get all verified/likely reports in the time window
-    statement = select(Report).where(
-        Report.status.in_(["verified", "likely"]),
-        Report.created_at >= time_window
-    )
-    reports = session.exec(statement).all()
+    async def cluster_verified_reports(self, db: AsyncSession) -> List[Incident]:
+        """
+        Runs DBSCAN on verified reports (within time window) to auto-create incidents.
+        """
+        cutoff = datetime.utcnow() - timedelta(hours=self.time_window_hours)
 
-    if len(reports) < settings.min_reports_for_incident:
-        return []
-
-    # Prepare coordinates for DBSCAN
-    coords = np.array([[r.lat, r.lng] for r in reports])
-
-    # Convert radius from meters to approximate degrees for DBSCAN eps
-    # 1 degree ≈ 111 km, so 500m ≈ 0.0045 degrees
-    eps_degrees = settings.cluster_radius_meters / 111_000
-
-    # Run DBSCAN
-    clustering = DBSCAN(
-        eps=eps_degrees,
-        min_samples=settings.min_reports_for_incident,
-        metric="euclidean"
-    )
-    labels = clustering.fit_predict(coords)
-
-    new_incidents = []
-
-    # Process each cluster
-    unique_labels = set(labels)
-    unique_labels.discard(-1)  # -1 = noise (unclustered points)
-
-    for label in unique_labels:
-        cluster_indices = [i for i, l in enumerate(labels) if l == label]
-        cluster_reports = [reports[i] for i in cluster_indices]
-
-        if len(cluster_reports) < settings.min_reports_for_incident:
-            continue
-
-        # Calculate cluster center
-        center_lat = np.mean([r.lat for r in cluster_reports])
-        center_lng = np.mean([r.lng for r in cluster_reports])
-
-        # Calculate affected radius
-        max_dist = max(
-            _haversine_km(center_lat, center_lng, r.lat, r.lng)
-            for r in cluster_reports
-        ) * 1000  # convert to meters
-
-        # Determine dominant category
-        categories = [r.detected_category for r in cluster_reports]
-        dominant_category = max(set(categories), key=categories.count)
-
-        # Calculate average trust score
-        avg_trust = np.mean([r.trust_score for r in cluster_reports])
-
-        # Determine severity
-        if avg_trust >= 85 and len(cluster_reports) >= 5:
-            severity = "critical"
-        elif avg_trust >= 70 or len(cluster_reports) >= 3:
-            severity = "high"
-        elif avg_trust >= 55:
-            severity = "moderate"
-        else:
-            severity = "low"
-
-        # Generate title and summary
-        summary_data = generate_incident_summary(
-            category=dominant_category,
-            report_count=len(cluster_reports),
-            center_address=cluster_reports[0].address,
-            severity=severity
-        )
-
-        # Check if an incident already exists near this location
-        existing = _find_nearby_incident(session, center_lat, center_lng)
-
-        if existing:
-            # Update existing incident
-            existing.report_count = len(cluster_reports)
-            existing.center_lat = float(center_lat)
-            existing.center_lng = float(center_lng)
-            existing.avg_trust_score = float(avg_trust)
-            existing.severity = severity
-            existing.affected_radius_meters = float(max_dist)
-            existing.updated_at = datetime.utcnow()
-            existing.title = summary_data["title"]
-            existing.summary = summary_data["summary"]
-            session.add(existing)
-            incident = existing
-        else:
-            # Create new incident
-            incident = Incident(
-                title=summary_data["title"],
-                summary=summary_data["summary"],
-                category=dominant_category,
-                center_lat=float(center_lat),
-                center_lng=float(center_lng),
-                report_count=len(cluster_reports),
-                avg_trust_score=float(avg_trust),
-                severity=severity,
-                affected_radius_meters=float(max_dist),
-                status="active"
+        query = select(Report).where(
+            and_(
+                Report.status == ReportStatus.VERIFIED,
+                Report.reported_at >= cutoff,
+                Report.incident_id.is_(None)
             )
-            session.add(incident)
-            new_incidents.append(incident)
+        )
+        result = await db.execute(query)
+        reports = result.scalars().all()
 
-        # Link reports to incident
-        for r in cluster_reports:
-            r.incident_id = incident.id
-            session.add(r)
+        if len(reports) < self.min_samples:
+            logger.info(f"Not enough verified reports ({len(reports)}) for clustering.")
+            return []
 
-    session.commit()
-    return new_incidents
+        # Build coordinate matrix (radians, for haversine metric)
+        coords = np.array([[np.radians(r.latitude), np.radians(r.longitude)] for r in reports])
+        eps_radians = self.eps_km / 6371.0  # Earth radius km
+
+        db_scan = DBSCAN(
+            eps=eps_radians,
+            min_samples=self.min_samples,
+            metric="haversine"
+        )
+        labels = db_scan.fit_predict(coords)
+
+        created_incidents = []
+        cluster_ids = set(labels) - {-1}
+
+        for cluster_label in cluster_ids:
+            cluster_reports = [r for r, lab in zip(reports, labels) if lab == cluster_label]
+
+            lats = [r.latitude for r in cluster_reports]
+            lngs = [r.longitude for r in cluster_reports]
+            centroid_lat = sum(lats) / len(lats)
+            centroid_lng = sum(lngs) / len(lngs)
+            avg_trust = sum(r.trust_score for r in cluster_reports) / len(cluster_reports)
+
+            # Severity from crowd size + trust
+            if len(cluster_reports) >= 10 or avg_trust >= 90:
+                severity = IncidentSeverity.CRITICAL
+            elif len(cluster_reports) >= 5 or avg_trust >= 80:
+                severity = IncidentSeverity.HIGH
+            elif len(cluster_reports) >= 3:
+                severity = IncidentSeverity.MEDIUM
+            else:
+                severity = IncidentSeverity.LOW
+
+            disaster_type = cluster_reports[0].disaster_type.value if hasattr(
+                cluster_reports[0].disaster_type, 'value'
+            ) else str(cluster_reports[0].disaster_type)
+
+            incident = Incident(
+                title=f"{disaster_type.title()} incident ({len(cluster_reports)} reports)",
+                description=f"Auto-clustered incident from {len(cluster_reports)} verified reports",
+                disaster_type=disaster_type,
+                severity=severity,
+                status=IncidentStatus.ACTIVE,
+                latitude=centroid_lat,
+                longitude=centroid_lng,
+                location=func.ST_SetSRID(func.ST_MakePoint(centroid_lng, centroid_lat), 4326),
+                radius_meters=self.eps_km * 1000,
+                report_count=len(cluster_reports),
+                avg_trust_score=round(avg_trust, 2),
+                cluster_id=f"dbscan-{uuid.uuid4().hex[:8]}",
+                dbscan_params={
+                    "eps_km": self.eps_km,
+                    "min_samples": self.min_samples,
+                    "time_window_hours": self.time_window_hours
+                }
+            )
+            db.add(incident)
+            await db.flush()
+
+            # Link reports to this incident
+            for r in cluster_reports:
+                r.incident_id = incident.id
+
+            created_incidents.append(incident)
+            logger.info(f"✅ Created incident {incident.id} from {len(cluster_reports)} reports")
+
+        await db.commit()
+        return created_incidents
 
 
-def _find_nearby_incident(
-    session: Session,
-    lat: float,
-    lng: float,
-    radius_km: float = 1.0
-) -> Incident | None:
-    """Find an existing active incident near the given coordinates."""
-    statement = select(Incident).where(Incident.status == "active")
-    incidents = session.exec(statement).all()
-
-    for inc in incidents:
-        dist = _haversine_km(lat, lng, inc.center_lat, inc.center_lng)
-        if dist <= radius_km:
-            return inc
-    return None
+cluster_service = ClusterService()

@@ -1,83 +1,69 @@
-from sqlmodel import SQLModel, Field
-from datetime import datetime, timezone
-from typing import Optional
 import uuid
+from datetime import datetime
+import enum
+from sqlalchemy import Column, String, Float, DateTime, Text, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import relationship
+from geoalchemy2 import Geography
+
+from app.database import Base
 
 
-def utc_now() -> datetime:
-    """Helper for timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+class ReportStatus(str, enum.Enum):
+    PENDING = "pending"
+    VERIFYING = "verifying"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+    DUPLICATE = "duplicate"
 
 
-class Report(SQLModel, table=True):
-    """Citizen crisis report — the raw input from the field."""
+class DisasterType(str, enum.Enum):
+    FLOOD = "flood"
+    EARTHQUAKE = "earthquake"
+    FIRE = "fire"
+    LANDSLIDE = "landslide"
+    CYCLONE = "cyclone"
+    TSUNAMI = "tsunami"
+    DROUGHT = "drought"
+    OTHER = "other"
+
+
+class Report(Base):
     __tablename__ = "reports"
 
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        primary_key=True,
-        max_length=36
-    )
-    lat: float = Field(index=True)
-    lng: float = Field(index=True)
-    address: str = Field(default="", max_length=500)
-    description: str = Field(default="", max_length=2000)
-    image_path: str = Field(default="", max_length=500)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String(255), nullable=True)
+    description = Column(Text, nullable=False)
+    disaster_type = Column(String(50), default="other", nullable=False)
 
-    # Verification fields (populated by AI pipeline)
-    status: str = Field(
-        default="received",
-        index=True
-    )  # received | verifying | verified | likely | needs_review | unverified
+    image_url = Column(String(1024), nullable=True)
+    video_url = Column(String(1024), nullable=True)
+    audio_url = Column(String(1024), nullable=True)
 
-    trust_score: float = Field(default=0.0)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    location = Column(Geography("POINT", srid=4326), nullable=False)
+    address_text = Column(String(500), nullable=True)
 
-    # Individual evidence scores (0-100 each)
-    vision_score: float = Field(default=0.0)
-    text_score: float = Field(default=0.0)
-    geo_score: float = Field(default=0.0)
-    crowd_score: float = Field(default=0.0)
-    satellite_score: float = Field(default=0.0)
+    reported_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    event_time = Column(DateTime(timezone=True), nullable=True)
 
-    # AI explanation
-    verdict: str = Field(default="pending", max_length=50)
-    explanation: str = Field(default="", max_length=1000)
-    detected_category: str = Field(default="unknown", max_length=100)
+    vision_score = Column(Float, default=0.0)
+    text_nlp_score = Column(Float, default=0.0)
+    geo_score = Column(Float, default=0.0)
+    crowd_score = Column(Float, default=0.0)
+    weather_score = Column(Float, default=0.0)
+    trust_score = Column(Float, default=0.0)
 
-    # Link to incident (set after clustering)
-    incident_id: Optional[str] = Field(default=None, foreign_key="incidents.id")
+    status = Column(String(50), default="pending", nullable=False)
+    incident_id = Column(UUID(as_uuid=True), ForeignKey("incidents.id", ondelete="SET NULL"), nullable=True)
 
-    # Timestamps
-    created_at: datetime = Field(default_factory=utc_now)
-    verified_at: Optional[datetime] = Field(default=None)
+    source = Column(String(50), default="mobile")
+    language = Column(String(10), default="en")
+    extra_metadata = Column("metadata", JSONB, default={})
 
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-class VerificationLog(SQLModel, table=True):
-    """Audit trail for every verification decision."""
-    __tablename__ = "verification_logs"
-
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        primary_key=True,
-        max_length=36
-    )
-    report_id: str = Field(foreign_key="reports.id", index=True)
-    step: str = Field(max_length=100)  # e.g., "vision_analysis", "consensus_fusion"
-    result: str = Field(max_length=2000)  # JSON string of step result
-    created_at: datetime = Field(default_factory=utc_now)
-
-
-class AuditEvent(SQLModel, table=True):
-    """Audit log for system-wide security & operational events."""
-    __tablename__ = "audit_events"
-
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        primary_key=True,
-        max_length=36
-    )
-    event_type: str = Field(index=True, max_length=100)
-    entity_id: str = Field(index=True, max_length=36)
-    actor: str = Field(default="system", max_length=100)
-    details: str = Field(default="{}", max_length=2000)
-    created_at: datetime = Field(default_factory=utc_now)
+    incident = relationship("Incident", back_populates="reports")
+    verification_logs = relationship("VerificationLog", back_populates="report", cascade="all, delete-orphan")

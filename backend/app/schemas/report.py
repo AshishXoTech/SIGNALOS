@@ -1,65 +1,77 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, Dict, Any
 from datetime import datetime
-from typing import Optional, List
+from uuid import UUID
+from enum import Enum
 
 
-# ── Request Schemas ──
+class DisasterTypeEnum(str, Enum):
+    FLOOD = "flood"
+    EARTHQUAKE = "earthquake"
+    FIRE = "fire"
+    LANDSLIDE = "landslide"
+    CYCLONE = "cyclone"
+    TSUNAMI = "tsunami"
+    DROUGHT = "drought"
+    OTHER = "other"
+
+
+class ReportStatusEnum(str, Enum):
+    PENDING = "pending"
+    VERIFYING = "verifying"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+    DUPLICATE = "duplicate"
+
 
 class ReportCreate(BaseModel):
-    """What the citizen PWA sends (excluding image, which is FormData)."""
-    lat: float = Field(..., ge=-90, le=90)
-    lng: float = Field(..., ge=-180, le=180)
-    address: str = Field(default="", max_length=500)
-    description: str = Field(default="", max_length=2000)
+    user_id: Optional[str] = Field(default="anonymous", max_length=255)
+    description: str = Field(..., min_length=5)
+    disaster_type: DisasterTypeEnum = Field(default=DisasterTypeEnum.OTHER)
 
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    address_text: Optional[str] = Field(default=None)
 
-# ── Response Schemas ──
+    image_url: Optional[str] = Field(default=None)
+    video_url: Optional[str] = Field(default=None)
+    audio_url: Optional[str] = Field(default=None)
 
-class VerificationStep(BaseModel):
-    """Single step in the verification proof chain."""
-    step_name: str
-    score: float
-    detail: str
+    source: Optional[str] = Field(default="mobile")
+    language: Optional[str] = Field(default="en")
+    extra_metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class ReportResponse(BaseModel):
-    """Full report data returned to frontend."""
-    id: str
-    lat: float
-    lng: float
-    address: str
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: Optional[str] = None
     description: str
-    image_path: str
+    disaster_type: str
+
+    image_url: Optional[str] = None
+    video_url: Optional[str] = None
+    audio_url: Optional[str] = None
+
+    latitude: float
+    longitude: float
+    address_text: Optional[str] = None
+
+    reported_at: Optional[datetime] = None
+    event_time: Optional[datetime] = None
+
+    vision_score: float = 0.0
+    text_nlp_score: float = 0.0
+    geo_score: float = 0.0
+    crowd_score: float = 0.0
+    weather_score: float = 0.0
+    trust_score: float = 0.0
+
     status: str
-    trust_score: float
-    verdict: str
-    explanation: str
-    detected_category: str
-    incident_id: Optional[str] = None
-    created_at: datetime
-    verified_at: Optional[datetime] = None
+    incident_id: Optional[UUID] = None
 
-    # Proof chain for explainability
-    verification_steps: Optional[List[VerificationStep]] = None
-
-    class Config:
-        from_attributes = True
-
-
-class ReportListResponse(BaseModel):
-    """Paginated list of reports."""
-    total: int
-    reports: List[ReportResponse]
-
-
-class StatsResponse(BaseModel):
-    """Live situation statistics for dashboard."""
-    total_reports: int
-    received: int
-    verifying: int
-    verified: int
-    likely: int
-    needs_review: int
-    unverified: int
-    active_incidents: int
-    latest_report_time: Optional[datetime] = None
+    source: Optional[str] = "mobile"
+    language: Optional[str] = "en"
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

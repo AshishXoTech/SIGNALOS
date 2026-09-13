@@ -1,37 +1,54 @@
-from sqlmodel import SQLModel, Field
-from datetime import datetime
-from typing import Optional
 import uuid
+from datetime import datetime
+import enum
+from sqlalchemy import Column, String, Float, DateTime, Text, Integer
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import relationship
+from geoalchemy2 import Geography
+
+from app.database import Base
 
 
-class Incident(SQLModel, table=True):
-    """Auto-formed incident cluster from verified reports."""
+class IncidentSeverity(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class IncidentStatus(str, enum.Enum):
+    ACTIVE = "active"
+    MONITORING = "monitoring"
+    RESOLVED = "resolved"
+    ARCHIVED = "archived"
+
+
+class Incident(Base):
     __tablename__ = "incidents"
 
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        primary_key=True,
-        max_length=36
-    )
-    title: str = Field(default="Unverified Incident", max_length=300)
-    summary: str = Field(default="", max_length=1000)
-    category: str = Field(default="unknown", max_length=100)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+    disaster_type = Column(String(50), nullable=False)
+    severity = Column(String(50), default="medium", nullable=False)
+    status = Column(String(50), default="active", nullable=False)
 
-    # Cluster center (average of all report coordinates)
-    center_lat: float = Field(default=0.0)
-    center_lng: float = Field(default=0.0)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    location = Column(Geography("POINT", srid=4326), nullable=False)
+    radius_meters = Column(Float, default=1000.0)
 
-    # Cluster metrics
-    report_count: int = Field(default=0)
-    avg_trust_score: float = Field(default=0.0)
-    severity: str = Field(default="moderate", max_length=50)  # low|moderate|high|critical
+    report_count = Column(Integer, default=0)
+    avg_trust_score = Column(Float, default=0.0)
 
-    # Affected area estimate
-    affected_radius_meters: float = Field(default=0.0)
+    first_reported = Column(DateTime(timezone=True), default=datetime.utcnow)
+    last_updated = Column(DateTime(timezone=True), default=datetime.utcnow)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Status
-    status: str = Field(default="active", index=True)  # active | resolved | monitoring
+    cluster_id = Column(String(100), nullable=True)
+    dbscan_params = Column(JSONB, default={})
 
-    # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    reports = relationship("Report", back_populates="incident")

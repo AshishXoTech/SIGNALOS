@@ -1,95 +1,55 @@
-"""
-SIGNAL OS — Main Application Entry Point
-Real-Time Verified Crisis Intelligence Platform
-"""
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
-import logging
-import os
 
-from app.database import create_db_and_tables
-from app.api import reports, incidents, websocket
-from app.config import get_settings
+from app.config import settings
+from app.api.v1.router import api_v1_router
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%H:%M:%S"
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s"
 )
-logger = logging.getLogger(__name__)
-settings = get_settings()
+logger = logging.getLogger("signal_os")
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Startup and shutdown events."""
-    logger.info("🚀 SIGNAL OS starting up...")
-    logger.info(f"   Environment: {settings.app_env}")
-    logger.info(f"   AI Mode: {'Gemini' if settings.gemini_api_key else 'Fallback'}")
-
-    # Create database tables
-    create_db_and_tables()
-    logger.info("   ✅ Database ready")
-
-    # Ensure upload directory exists
-    os.makedirs(settings.upload_dir, exist_ok=True)
-    logger.info("   ✅ Upload directory ready")
-
-    logger.info("🟢 SIGNAL OS is LIVE")
-    yield
-    logger.info("🔴 SIGNAL OS shutting down")
-
-
-# Create FastAPI app
 app = FastAPI(
-    title="SIGNAL OS",
-    description="Real-Time Verified Crisis Intelligence Platform",
+    title="Signal OS — AI Disaster Intelligence Platform",
+    description="Multi-modal AI verification + real-time spatial disaster coordination",
     version="1.0.0",
-    lifespan=lifespan
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# CORS — Allow frontend to connect
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Next.js dev
-        "http://127.0.0.1:3000",
-        "*",  # For hackathon demo flexibility
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static files for uploaded images
-os.makedirs(settings.upload_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
-
-# Register routers
-app.include_router(reports.router)
-app.include_router(incidents.router)
-app.include_router(websocket.router)
+app.include_router(api_v1_router)
 
 
 @app.get("/")
-def root():
-    """Health check."""
+async def root():
     return {
-        "platform": "SIGNAL OS",
+        "system": "Signal OS Disaster Intelligence API",
+        "status": "online",
         "version": "1.0.0",
-        "status": "operational",
-        "docs": "/docs"
+        "docs": "/docs",
+        "websocket": "/ws/live",
+        "api_base": "/api/v1"
     }
 
 
-@app.get("/health")
-def health():
-    """Detailed health check for monitoring."""
-    return {
-        "status": "healthy",
-        "ai_mode": "gemini" if settings.gemini_api_key else "fallback",
-        "database": "connected"
-    }
+@app.on_event("startup")
+async def startup():
+    logger.info("🚀 Signal OS Backend LIVE")
+    logger.info(f"🌍 Environment: {settings.APP_ENV}")
+    logger.info(f"📡 WebSocket: ws://localhost:8001/ws/live")
+    logger.info(f"📖 Docs: http://localhost:8001/docs")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    logger.info("🛑 Signal OS Backend shutting down")

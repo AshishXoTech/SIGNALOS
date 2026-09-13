@@ -1,41 +1,54 @@
-from pydantic_settings import BaseSettings
 from functools import lru_cache
-
+from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Database
-    database_url: str = "postgresql://signal_user:signal_pass@localhost:5432/signal_os"
+    DB_HOST: str = "db"
+    DB_PORT: int = 5432
+    DB_NAME: str = "disaster_ai"
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "postgres"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@db:5432/disaster_ai"
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_ECHO: bool = False
 
-    # AI
-    gemini_api_key: str = ""
+    # App Config
+    APP_ENV: str = "development"
+    APP_PORT: int = 8000
+    SECRET_KEY: str = "signal-os-dev-secret-key"
 
-    # App
-    app_env: str = "development"
-    upload_dir: str = "./uploads"
-    max_upload_size_mb: int = 10
+    # AI Keys
+    OPENAI_API_KEY: Optional[str] = None
+    GOOGLE_VISION_KEY: Optional[str] = None
+    OPENWEATHER_API_KEY: Optional[str] = None
 
-    # Verification Thresholds
-    verified_threshold: int = 75
-    likely_threshold: int = 55
-    needs_review_threshold: int = 30
+    # AI Consensus Weights
+    VISION_WEIGHT: float = 0.25
+    TEXT_WEIGHT: float = 0.25
+    GEO_WEIGHT: float = 0.20
+    CROWD_WEIGHT: float = 0.20
+    WEATHER_WEIGHT: float = 0.10
 
     # Clustering
-    cluster_radius_meters: float = 500.0
-    cluster_time_window_minutes: int = 60
-    min_reports_for_incident: int = 2
+    CLUSTER_EPS_KM: float = 5.0
+    CLUSTER_MIN_SAMPLES: int = 3
+    CLUSTER_TIME_WINDOW_HOURS: int = 24
 
-    # Consensus Weights (must sum to 1.0)
-    weight_vision: float = 0.35
-    weight_text: float = 0.15
-    weight_geo: float = 0.15
-    weight_crowd: float = 0.20
-    weight_satellite: float = 0.15
+    # Thresholds
+    TRUST_SCORE_VERIFIED: float = 70.0
+    TRUST_SCORE_SUSPICIOUS: float = 40.0
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False
+    )
 
+settings = Settings()
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    return settings

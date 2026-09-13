@@ -1,29 +1,45 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional
 from datetime import datetime
-from typing import Optional, List
+from uuid import UUID
+from enum import Enum
+
+
+class IncidentSeverityEnum(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class IncidentStatusEnum(str, Enum):
+    ACTIVE = "active"
+    MONITORING = "monitoring"
+    RESOLVED = "resolved"
+    ARCHIVED = "archived"
 
 
 class IncidentResponse(BaseModel):
-    """Incident cluster data for the map + panel."""
-    id: str
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
     title: str
-    summary: str
-    category: str
-    center_lat: float
-    center_lng: float
-    report_count: int
-    avg_trust_score: float
+    description: Optional[str] = None
+    disaster_type: str
     severity: str
-    affected_radius_meters: float
     status: str
-    created_at: datetime
-    updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    latitude: float
+    longitude: float
+    radius_meters: float = 1000.0
 
+    report_count: int = 0
+    avg_trust_score: float = 0.0
 
-class IncidentListResponse(BaseModel):
-    """All active incidents."""
-    total: int
-    incidents: List[IncidentResponse]
+    first_reported: Optional[datetime] = None
+    last_updated: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+
+    cluster_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
