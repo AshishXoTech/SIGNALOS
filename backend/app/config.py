@@ -18,12 +18,20 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     APP_PORT: int = 8000
     SECRET_KEY: str = "signal-os-dev-secret-key"
+    CORS_ORIGINS: str = "http://localhost:3000"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     MEDIA_DIR: str = "uploads"
+    MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
 
     # AI Keys
     OPENAI_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-3.6-flash"
+    GROK_API_KEY: Optional[str] = None
+    GROK_MODEL: str = "grok-3-mini"
+    AI_PROVIDER: str = "auto"
+    AI_TIMEOUT_SECONDS: float = 8.0
     GOOGLE_VISION_KEY: Optional[str] = None
     OPENWEATHER_API_KEY: Optional[str] = None
 
@@ -51,6 +59,12 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+
+if settings.APP_ENV.lower() == "production":
+    if settings.SECRET_KEY == "signal-os-dev-secret-key":
+        raise RuntimeError("SECRET_KEY must be changed before production startup")
+    if not settings.DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is required before production startup")
 
 @lru_cache()
 def get_settings() -> Settings:

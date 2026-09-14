@@ -60,3 +60,18 @@ async def get_admin_user(
             detail="Admin access required",
         )
     return user
+
+
+def require_roles(*allowed_roles: str):
+    """Build a dependency for role-scoped operational endpoints."""
+    normalized = {role.strip().lower() for role in allowed_roles}
+
+    async def role_guard(user: User = Depends(get_current_user)) -> User:
+        if user.role.strip().lower() not in normalized:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Role access required: {', '.join(sorted(normalized))}",
+            )
+        return user
+
+    return role_guard

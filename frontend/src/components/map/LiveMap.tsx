@@ -72,18 +72,16 @@ export function LiveMap({
       if (cancelled || !mapContainer.current || mapRef.current) return;
       const maplibregl = mod;
 
-      // OpenStreetMap raster tiles
+      // Use a keyless OSM-compatible tile endpoint for local and demo deployments.
       const map = new maplibregl.Map({
         container: mapContainer.current,
         style: {
           version: 8,
           sources: {
-            osm: {
+            basemap: {
               type: "raster",
               tiles: [
-                "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
               ],
               tileSize: 256,
               attribution: "© OpenStreetMap",
@@ -91,11 +89,11 @@ export function LiveMap({
           },
           layers: [
             {
-              id: "osm",
+              id: "basemap",
               type: "raster",
-              source: "osm",
+              source: "basemap",
               minzoom: 0,
-              maxzoom: 19,
+              maxzoom: 18,
             },
           ],
         },

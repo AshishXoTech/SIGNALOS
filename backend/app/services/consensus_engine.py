@@ -37,7 +37,15 @@ class ConsensusEngine:
         )
         trust_score = round(max(0.0, min(trust_score, 100.0)), 2)
 
-        if trust_score >= settings.TRUST_SCORE_VERIFIED:
+        provider_backed = any(
+            details.get("engine") not in {None, "heuristic"}
+            for details in (v_details, t_details, g_details, c_details, w_details)
+        )
+        if not provider_backed:
+            # Local heuristics can prioritize work, but must not close the human loop.
+            decision = "needs_review"
+            new_status = "verifying"
+        elif trust_score >= settings.TRUST_SCORE_VERIFIED:
             decision = "verified"
             new_status = "verified"
         elif trust_score <= settings.TRUST_SCORE_SUSPICIOUS:
@@ -53,6 +61,19 @@ class ConsensusEngine:
         report.crowd_score = c_score
         report.weather_score = w_score
         report.trust_score = trust_score
+        metadata = dict(report.extra_metadata or {})
+        metadata["ai"] = {
+            "engine": t_details.get("engine", "heuristic"),
+            "automation_mode": "provider_assisted" if provider_backed else "human_review_required",
+            "decision": decision,
+            "confidence": round(trust_score / 100.0, 2),
+            "text": t_details,
+            "vision": v_details,
+            "location": g_details,
+            "crowd": c_details,
+            "weather": w_details,
+        }
+        report.extra_metadata = metadata
         report.status = new_status
 
         return VerificationResult(

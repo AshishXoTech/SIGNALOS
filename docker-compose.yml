@@ -22,9 +22,10 @@ services:
     build: ./backend
     ports:
       - "8001:8000"
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://signal_user:signal_pass@db:5432/signal_os
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       APP_ENV: development
     volumes:
       - ./backend:/app

@@ -169,6 +169,43 @@ CREATE INDEX IF NOT EXISTS idx_incidents_status
 CREATE INDEX IF NOT EXISTS idx_incidents_severity 
     ON incidents(severity);
 
+-- ============================================================
+-- 5. ASSIGNMENTS AND CLOSURE REVIEW
+-- ============================================================
+CREATE TABLE IF NOT EXISTS assignments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    incident_id UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+    team_id VARCHAR(100) NOT NULL,
+    team_name VARCHAR(255) NOT NULL,
+    responder_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'offered',
+    notes TEXT,
+    offered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    accepted_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_assignments_incident ON assignments(incident_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_responder ON assignments(responder_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_status ON assignments(status);
+
+CREATE TABLE IF NOT EXISTS closures (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    incident_id UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+    assignment_id UUID REFERENCES assignments(id) ON DELETE SET NULL,
+    submitted_by VARCHAR(255) NOT NULL DEFAULT 'system',
+    actions_taken TEXT NOT NULL,
+    people_assisted INTEGER NOT NULL DEFAULT 0,
+    remaining_risks TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    review_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reviewed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_closures_incident ON closures(incident_id);
+CREATE INDEX IF NOT EXISTS idx_closures_status ON closures(status);
+
 -- Now add FK to reports
 ALTER TABLE reports 
     ADD CONSTRAINT fk_reports_incident 
@@ -176,7 +213,7 @@ ALTER TABLE reports
     ON DELETE SET NULL;
 
 -- ============================================================
--- 5. VERIFICATION LOGS (AI audit trail)
+-- 6. VERIFICATION LOGS (AI audit trail)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS verification_logs (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -209,7 +246,7 @@ CREATE INDEX IF NOT EXISTS idx_vlogs_time
     ON verification_logs(verified_at DESC);
 
 -- ============================================================
--- 6. AUDIT EVENTS (system-wide activity log)
+-- 7. AUDIT EVENTS (system-wide activity log)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS audit_events (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -236,7 +273,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_time
     ON audit_events(created_at DESC);
 
 -- ============================================================
--- 7. HELPER FUNCTIONS
+-- 8. HELPER FUNCTIONS
 -- ============================================================
 
 -- Auto-update updated_at timestamp

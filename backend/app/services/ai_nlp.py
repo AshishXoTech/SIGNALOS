@@ -2,6 +2,7 @@ import logging
 import re
 from typing import Dict, Any, Tuple
 from app.config import settings
+from app.services.ai_provider import analyze_text as provider_analyze_text
 
 logger = logging.getLogger("signal_os.ai_nlp")
 
@@ -21,6 +22,19 @@ class AINLPService:
         """
         if not description or len(description.strip()) < 5:
             return 20.0, {"status": "invalid_text", "reason": "Text too short"}
+
+        provider_result = await provider_analyze_text(description, disaster_type)
+        if provider_result:
+            raw_score = provider_result.get("text_score", provider_result.get("urgency_score", 50))
+            try:
+                score = max(0.0, min(float(raw_score), 100.0))
+            except (TypeError, ValueError):
+                score = 50.0
+            return round(score, 2), {
+                "status": "provider",
+                "engine": provider_result.pop("engine", "provider"),
+                **provider_result,
+            }
 
         text_lower = description.lower()
         score = 50.0
@@ -42,6 +56,7 @@ class AINLPService:
         final_score = max(10.0, min(score, 99.0))
 
         return round(final_score, 2), {
+            "engine": "heuristic",
             "text_length": len(description),
             "keywords_found": matched_words,
             "urgency_triggers": urgency_detected,

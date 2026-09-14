@@ -16,10 +16,34 @@ const NAV = [
   { href: "/dashboard/closures", label: "Closures", icon: ClipboardCheck },
 ];
 
+const ROLE_NAV: Record<string, string[]> = {
+  dispatcher: ["/dashboard/incidents", "/dashboard/teams", "/dashboard/reports"],
+  supervisor: ["/dashboard", "/dashboard/incidents", "/dashboard/reports", "/dashboard/closures"],
+  operator: NAV.map((item) => item.href),
+};
+
+const ROLE_WORKSPACE: Record<string, { title: string; mission: string }> = {
+  dispatcher: {
+    title: "Dispatch Operations",
+    mission: "Move the right team to the right place",
+  },
+  supervisor: {
+    title: "Supervisor Review",
+    mission: "Accountability before closure",
+  },
+  operator: {
+    title: "Bharat Command",
+    mission: "National response posture",
+  },
+};
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, hydrate } = useStore();
+  const role = user?.role?.trim().toLowerCase() || "operator";
+  const visibleNav = ROLE_NAV[role] || ROLE_NAV.operator;
+  const workspace = ROLE_WORKSPACE[role] || ROLE_WORKSPACE.operator;
 
   useEffect(() => {
     hydrate();
@@ -35,10 +59,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!user) return;
 
     const homePath = getRoleHomePath(user.role);
-    if (homePath === "/responder" || (homePath !== "/dashboard" && pathname === "/dashboard")) {
+    const canAccess = role === "operator"
+      || visibleNav.some((href) => pathname === href || pathname.startsWith(`${href}/`));
+    if (homePath === "/responder" || (homePath !== "/dashboard" && pathname === "/dashboard") || !canAccess) {
       router.replace(homePath);
     }
-  }, [pathname, router, user]);
+  }, [pathname, role, router, user, visibleNav]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -50,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <SignalLogo className="h-12 w-12 rounded-xl shadow-lg shadow-orange-500/25" />
             <div>
               <div className="text-[16px] font-black text-white leading-tight">Signal OS</div>
-              <div className="text-[10px] font-black text-orange-200 uppercase tracking-[0.22em]">Bharat Command</div>
+              <div className="text-[10px] font-black text-orange-200 uppercase tracking-[0.22em]">{workspace.title}</div>
               <div className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/80">National 112 Grid</div>
             </div>
           </div>
@@ -60,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               National Operations
             </p>
             <div className="space-y-1">
-              {NAV.map((item) => {
+              {NAV.filter((item) => visibleNav.includes(item.href)).map((item) => {
                 const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
                 const Icon = item.icon;
                 return (
@@ -82,7 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                   <div className="h-full w-[98%] rounded-full bg-[linear-gradient(90deg,#ff671f,#ffffff,#046a38)]" />
                 </div>
-                <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">National response posture</div>
+                <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{workspace.mission}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">

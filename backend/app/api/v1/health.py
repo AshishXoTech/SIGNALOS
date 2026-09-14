@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from app.database import get_db
 from app.config import settings
+from app.services.ai_provider import configured_provider
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
@@ -15,7 +16,8 @@ async def health_check(db: AsyncSession = Depends(get_db)):
             "status": "healthy",
             "database": "connected",
             "environment": settings.APP_ENV,
-            "service": "Signal OS Backend"
+            "service": "Signal OS Backend",
+            "ai_engine": configured_provider(),
         }
     except Exception as e:
         return {"status": "unhealthy", "database": f"error: {str(e)}"}

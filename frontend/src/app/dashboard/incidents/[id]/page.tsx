@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatTimeAgo } from "@/lib/utils";
+import { api } from "@/lib/api-client";
 
 // Mock Data for Hackathon
 const INCIDENT = {
@@ -45,13 +46,22 @@ export default function IncidentDetailPage() {
   const [assignedTeam, setAssignedTeam] = useState<string | null>(null);
   const [isDispatching, setIsDispatching] = useState(false);
 
-  const handleDispatch = (teamId: string) => {
+  const handleDispatch = async (teamId: string) => {
     setIsDispatching(true);
-    setTimeout(() => {
+    const team = SUGGESTED_TEAMS.find((candidate) => candidate.id === teamId);
+    const isPersistedIncident = /^[0-9a-f-]{36}$/i.test(String(incidentId));
+
+    try {
+      if (isPersistedIncident && team) {
+        await api.assignTeam(String(incidentId), team.id, team.name);
+      }
       setAssignedTeam(teamId);
-      setIsDispatching(false);
       toast.success("Team dispatched successfully!");
-    }, 800);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to dispatch team");
+    } finally {
+      setIsDispatching(false);
+    }
   };
 
   return (

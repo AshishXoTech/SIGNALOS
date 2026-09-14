@@ -237,7 +237,17 @@ export default function ReportPage() {
     };
 
     try {
-      const data = await api.submitReport(apiPayload);
+      let audioUrl: string | null = null;
+      if (voice.blob) {
+        const extension = voice.blob.type.includes("mp4") ? "m4a" : "webm";
+        const upload = await api.uploadMedia(voice.blob, `voice-${submissionId}.${extension}`);
+        audioUrl = upload.files[0]?.url || null;
+      }
+
+      const data = await api.submitReport({
+        ...apiPayload,
+        audio_url: audioUrl,
+      });
       setReference(`IND-${String(data.id || submissionId).slice(0, 5).toUpperCase()}`);
 
       if (typeof data.trust_score === "number") {

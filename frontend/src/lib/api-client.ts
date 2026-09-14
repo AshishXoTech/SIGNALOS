@@ -58,6 +58,19 @@ class ApiClient {
       skipAuth: true,
     });
 
+  uploadMedia = (blob: Blob, filename: string) => {
+    const form = new FormData();
+    form.append("files", blob, filename);
+    return this.request<{
+      uploaded: number;
+      files: Array<{ url: string; content_type: string; size_bytes: number }>;
+    }>("/api/v1/media/upload", {
+      method: "POST",
+      body: form,
+      skipAuth: true,
+    });
+  };
+
   getReports = (params?: Record<string, string>) => {
     const q = params ? `?${new URLSearchParams(params).toString()}` : "";
     return this.request(`/api/v1/reports${q}`, { skipAuth: true });
@@ -144,10 +157,10 @@ class ApiClient {
   suggestTeams = (lat: number, lng: number, hazard: string) =>
     this.request(`/api/v1/teams/suggest?latitude=${lat}&longitude=${lng}&hazard_type=${hazard}`);
 
-  assignTeam = (incidentId: string, teamId: string) =>
+  assignTeam = (incidentId: string, teamId: string, teamName: string) =>
     this.request(`/api/v1/assignments/incidents/${incidentId}/assign`, {
       method: "POST",
-      body: JSON.stringify({ team_id: teamId }),
+      body: JSON.stringify({ team_id: teamId, team_name: teamName }),
     });
 
   getMyAssignments = () => this.request("/api/v1/assignments/me");

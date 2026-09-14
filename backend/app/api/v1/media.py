@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.post("/upload")
 async def upload_media(
-    files: List[UploadFile] = File(..., description="Upload images/videos"),
+    files: List[UploadFile] = File(..., description="Upload images, videos, or audio"),
 ):
     """Upload one or more media files"""
     results = []

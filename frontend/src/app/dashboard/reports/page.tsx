@@ -22,6 +22,7 @@ interface DemoReport {
   received_at: string;
   review: "unreviewed" | "needs_review" | "confirmed" | "disputed";
   contact: string | null;
+  audio_url?: string | null;
 }
 
 const INITIAL_REPORTS: DemoReport[] = [
@@ -60,6 +61,7 @@ const INITIAL_REPORTS: DemoReport[] = [
     received_at: new Date(Date.now() - 25 * 60000).toISOString(),
     review: "needs_review",
     contact: "+91 91234 56789",
+    audio_url: null,
   },
   {
     id: "rep-104",
@@ -96,6 +98,7 @@ const INITIAL_REPORTS: DemoReport[] = [
     received_at: new Date(Date.now() - 95 * 60000).toISOString(),
     review: "confirmed",
     contact: null,
+    audio_url: null,
   },
 ];
 
@@ -124,6 +127,7 @@ export default function ReportsQueuePage() {
             ? "disputed"
             : "unreviewed",
           contact: null,
+          audio_url: typeof item.audio_url === "string" ? item.audio_url : null,
         })));
       })
       .catch(() => {});
@@ -301,6 +305,20 @@ export default function ReportsQueuePage() {
                         <Phone className="w-4 h-4 text-slate-400" />
                         {selected.contact}
                       </div>
+                    </div>
+                  )}
+
+                  {selected.audio_url && (
+                    <div>
+                      <label className="data-label block mb-2">Citizen voice note</label>
+                      <audio
+                        controls
+                        preload="metadata"
+                        className="w-full"
+                        src={`${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1$/, "") || "http://localhost:8001"}${selected.audio_url}`}
+                      >
+                        Your browser does not support audio playback.
+                      </audio>
                     </div>
                   )}
                 </div>

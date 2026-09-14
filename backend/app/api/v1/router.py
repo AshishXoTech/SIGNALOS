@@ -9,6 +9,7 @@ from app.api.v1 import (
     media,
     alerts,
     verification,
+    operations,
 )
 
 api_v1_router = APIRouter()
@@ -22,6 +23,8 @@ api_v1_router.include_router(analytics.router, prefix="/api/v1/analytics")
 api_v1_router.include_router(media.router, prefix="/api/v1/media")
 api_v1_router.include_router(alerts.router, prefix="/api/v1/alerts")
 api_v1_router.include_router(verification.router, prefix="/api/v1/verification")
+api_v1_router.include_router(operations.assignments_router, prefix="/api/v1")
+api_v1_router.include_router(operations.closures_router, prefix="/api/v1")
 
 # WebSocket is mounted at root (no /api/v1 prefix)
 api_v1_router.include_router(websocket.router)

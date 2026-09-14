@@ -8,6 +8,7 @@ import {
 import { HAZARD_TYPES } from "@/lib/constants";
 import { formatTimeAgo } from "@/lib/utils";
 import { api } from "@/lib/api-client";
+import { useStore } from "@/lib/store";
 
 const INCIDENTS = [
   {
@@ -118,6 +119,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function IncidentsListPage() {
+  const user = useStore((state) => state.user);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [incidents, setIncidents] = useState(INCIDENTS);
@@ -163,10 +165,12 @@ export default function IncidentsListPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">
-            Active Incidents
+            {user?.role?.toLowerCase() === "dispatcher" ? "Dispatch Incident Queue" : "Incident Oversight"}
           </h1>
           <p className="text-sm font-medium text-slate-500">
-            All operational events under management
+            {user?.role?.toLowerCase() === "dispatcher"
+              ? "Prioritize, assign, and monitor incidents requiring field response"
+              : "All operational events under management"}
           </p>
         </div>
 

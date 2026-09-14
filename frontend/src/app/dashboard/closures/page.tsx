@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardCheck, Check, X, Clock, MapPin, User,
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatTimeAgo } from "@/lib/utils";
+import { api } from "@/lib/api-client";
 
 type ReviewStatus = "pending" | "approved" | "rejected" | "needs_info";
 
@@ -142,11 +143,44 @@ export default function ClosuresPage() {
   const [selected, setSelected] = useState<ClosureRequest | null>(null);
   const [notes, setNotes] = useState("");
 
+  useEffect(() => {
+    api.getPendingClosures()
+      .then((data) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setItems((data as Record<string, unknown>[]).map((item) => ({
+          id: String(item.id),
+          incidentId: String(item.incident_id),
+          incidentTitle: "Field closure awaiting command review",
+          hazard: "Operational closure",
+          severity: "high",
+          location: "Incident location pending enrichment",
+          teamName: "Assigned response team",
+          submittedBy: String(item.submitted_by || "Field responder"),
+          submittedAt: String(item.created_at || new Date().toISOString()),
+          actionsTaken: String(item.actions_taken || ""),
+          peopleAssisted: Number(item.people_assisted || 0),
+          remainingRisks: String(item.remaining_risks || "No additional risks recorded"),
+          status: (String(item.status || "pending") as ReviewStatus),
+        })));
+      })
+      .catch(() => {
+        // Demo closures remain available when the operational API is unavailable.
+      });
+  }, []);
+
   const filtered = items.filter((i) =>
     filter === "all" ? true : i.status === filter
   );
 
-  const decide = (id: string, status: ReviewStatus) => {
+  const decide = async (id: string, status: ReviewStatus) => {
+    if (/^[0-9a-f-]{36}$/i.test(id)) {
+      try {
+        await api.reviewClosure(id, status, notes || undefined);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Unable to update closure");
+        return;
+      }
+    }
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, status } : i))
     );

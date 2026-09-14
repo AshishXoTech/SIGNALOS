@@ -21,6 +21,13 @@ ALLOWED_TYPES = {
     "image/gif": ".gif",
     "video/mp4": ".mp4",
     "video/quicktime": ".mov",
+    "audio/webm": ".webm",
+    "audio/mp4": ".mp4",
+    "audio/mpeg": ".mp3",
+    "audio/ogg": ".ogg",
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+    "audio/x-m4a": ".m4a",
 }
 
 
@@ -53,7 +60,12 @@ class MediaService:
         # Generate unique filename
         ext = ALLOWED_TYPES[file.content_type]
         filename = f"{uuid.uuid4().hex}{ext}"
-        subdir = "images" if "image" in file.content_type else "videos"
+        if "image" in file.content_type:
+            subdir = "images"
+        elif "video" in file.content_type:
+            subdir = "videos"
+        else:
+            subdir = "audio"
         save_dir = self.media_dir / subdir
         save_dir.mkdir(parents=True, exist_ok=True)
         filepath = save_dir / filename
@@ -62,7 +74,7 @@ class MediaService:
         async with aiofiles.open(filepath, "wb") as f:
             await f.write(content)
 
-        url = f"/media/{subdir}/{filename}"
+        url = f"/api/v1/media/{subdir}/{filename}"
 
         metadata = {
             "filename": filename,
@@ -77,7 +89,9 @@ class MediaService:
 
     async def delete_file(self, url: str) -> bool:
         """Delete a media file"""
-        filepath = self.media_dir / url.lstrip("/media/")
+        media_prefix = "/api/v1/media/"
+        relative_path = url.split(media_prefix, 1)[-1] if media_prefix in url else url.lstrip("/")
+        filepath = self.media_dir / relative_path
         if filepath.exists():
             os.remove(filepath)
             return True
