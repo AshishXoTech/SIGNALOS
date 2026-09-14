@@ -3,7 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Phone, Lock, AlertTriangle, ArrowRight, ShieldCheck, UserCheck, KeyRound } from "lucide-react";
+import { 
+  Phone, 
+  Lock, 
+  AlertTriangle, 
+  ArrowRight, 
+  ShieldCheck, 
+  UserCheck, 
+  KeyRound, 
+  Building2, 
+  Shield, 
+  Radio, 
+  Truck, 
+  CheckCircle2 
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { SignalLogo } from "@/components/brand/SignalLogo";
 import GovHeader from "@/components/GovHeader";
@@ -12,10 +25,68 @@ import { api } from "@/lib/api-client";
 import { getRoleHomePath, getRoleWorkspaceName } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 
+const DEPARTMENTS = [
+  "MHA — National Emergency Command (ERSS 112)",
+  "State Police Operations & Control Room",
+  "Fire & Rescue Services Command",
+  "National Disaster Response Force (NDRF)",
+  "State Disaster Management Authority (SDMA)",
+  "Health & Trauma Emergency Services (108)",
+];
+
+const ROLES_INFO = [
+  {
+    id: "operator",
+    name: "Command Operator",
+    phone: "+910000000001",
+    clearance: "LEVEL 3 — COMMAND ROOM",
+    badge: "MHA-OP-112",
+    icon: Shield,
+    color: "bg-blue-50 border-blue-200 text-blue-800",
+    activeColor: "border-blue-600 bg-blue-50/80 ring-2 ring-blue-500/20",
+    desc: "National Incident Triage & Live AI Spatial Intelligence",
+  },
+  {
+    id: "dispatcher",
+    name: "Field Dispatcher",
+    phone: "+910000000002",
+    clearance: "LEVEL 2 — INCIDENT CONTROL",
+    badge: "MHA-DP-108",
+    icon: Radio,
+    color: "bg-orange-50 border-orange-200 text-orange-800",
+    activeColor: "border-orange-600 bg-orange-50/80 ring-2 ring-orange-500/20",
+    desc: "Resource Dispatching, Routing & Inter-Agency Coordination",
+  },
+  {
+    id: "responder",
+    name: "First Responder",
+    phone: "+910000000003",
+    clearance: "LEVEL 1 — FIELD UNIT",
+    badge: "MHA-FR-099",
+    icon: Truck,
+    color: "bg-emerald-50 border-emerald-200 text-emerald-800",
+    activeColor: "border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-500/20",
+    desc: "On-Ground Incident Action, Navigation & Closure Submission",
+  },
+  {
+    id: "supervisor",
+    name: "Review Supervisor",
+    phone: "+910000000004",
+    clearance: "LEVEL 4 — AUDIT & CLOSURE",
+    badge: "MHA-SV-001",
+    icon: CheckCircle2,
+    color: "bg-purple-50 border-purple-200 text-purple-800",
+    activeColor: "border-purple-600 bg-purple-50/80 ring-2 ring-purple-500/20",
+    desc: "Incident Closure Verification, Accountability & After-Action Audit",
+  },
+];
+
 export default function LoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState("+910000000001");
   const [password, setPassword] = useState("");
+  const [department, setDepartment] = useState(DEPARTMENTS[0]);
+  const [selectedRole, setSelectedRole] = useState(ROLES_INFO[0]);
   const [isLoading, setIsLoading] = useState(false);
   const setUser = useStore((state) => state.setUser);
   const setToken = useStore((state) => state.setToken);
@@ -28,24 +99,25 @@ export default function LoginPage() {
       setToken(response.access_token);
       setUser({ ...response.user, full_name: response.user.full_name || response.user.role });
       document.cookie = `signal_token=${encodeURIComponent(response.access_token)}; path=/; max-age=86400; SameSite=Lax`;
-      toast.success(`Authenticated. Entering ${getRoleWorkspaceName(response.user.role)}...`);
+      toast.success(`Authenticated [${selectedRole.badge}]. Entering ${getRoleWorkspaceName(response.user.role)}...`);
       router.replace(getRoleHomePath(response.user.role));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to authenticate");
+      toast.error(error instanceof Error ? error.message : "Unable to authenticate officer credentials");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const setDemoRole = (rolePhone: string) => {
-    setPhone(rolePhone);
+  const setDemoRole = (roleItem: typeof ROLES_INFO[0]) => {
+    setSelectedRole(roleItem);
+    setPhone(roleItem.phone);
     setPassword("YourPassword123");
   };
 
   return (
     <div className="relative min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-500/30 overflow-x-hidden">
       
-      {/* 🇮🇳 OFFICIAL GOVERNMENT HEADER */}
+      {/* 🇮🇳 OFFICIAL GOVERNMENT HEADER WITH IST CLOCK */}
       <GovHeader />
 
       {/* SUBTLE BHARAT AMBIENT GLOW */}
@@ -88,26 +160,56 @@ export default function LoginPage() {
           
           <div className="bg-slate-200/60 text-slate-700 text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">
             <UserCheck className="w-3.5 h-3.5 text-blue-700" />
-            <span>Officer & Responder Duty Access Gateway</span>
+            <span>Duty Gateway • Authorized Responders & Officers Only</span>
           </div>
         </div>
 
-        {/* Login Card */}
-        <div className="w-full max-w-[420px]">
+        {/* Login Card Container */}
+        <div className="w-full max-w-[440px]">
           <div className="bg-white/90 backdrop-blur-2xl rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.06)] border border-slate-200/80 p-7 mb-6">
             
+            {/* Header & Role Badge */}
             <div className="mb-5 pb-3 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Officer Authentication</h2>
-                <p className="text-[11px] font-medium text-slate-500">Enter your registered mobile & security key</p>
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Officer Verification</h2>
+                <p className="text-[11px] font-medium text-slate-500">Sign in to active emergency duty workspace</p>
               </div>
-              <KeyRound className="w-5 h-5 text-orange-500 opacity-80" />
+              <div className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-md text-right">
+                <div className="text-[9px] font-black text-slate-400 uppercase">Clearance</div>
+                <div className="text-[10px] font-extrabold text-slate-800">{selectedRole.badge}</div>
+              </div>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
+              
+              {/* Department / Agency Selector */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 ml-0.5">
-                  Mobile ID / Officer Phone
+                  Department / Agency
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full h-11 pl-10 pr-8 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all shadow-xs appearance-none cursor-pointer"
+                  >
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+                    ▼
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile / Officer ID */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 ml-0.5">
+                  Officer Mobile ID / Duty Phone
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -122,6 +224,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* Password */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 ml-0.5">
                   Security Password
@@ -139,55 +242,67 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* Active Duty Role Badge Display */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-slate-800">{selectedRole.name} Clearance</span>
+                  <span className="text-[10px] font-black text-orange-600 uppercase tracking-wide">{selectedRole.clearance}</span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-snug">{selectedRole.desc}</p>
+              </div>
+
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-11 mt-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl font-bold text-sm shadow-md shadow-orange-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
+                className="w-full h-11 mt-1 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl font-bold text-sm shadow-md shadow-orange-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    Authenticating Officer...
+                    Verifying Credentials...
                   </span>
                 ) : (
-                  "Sign in to Command Workspace"
+                  `Sign in as ${selectedRole.name}`
                 )}
               </button>
             </form>
           </div>
 
-          {/* Quick Demo Role Selector */}
+          {/* Role Selection Grid */}
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-3 w-full max-w-[320px] mb-3">
+            <div className="flex items-center gap-3 w-full max-w-[340px] mb-3">
               <div className="h-px flex-1 bg-slate-300"></div>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                Quick Role Selector (Demo)
+                Select Operational Role
               </span>
               <div className="h-px flex-1 bg-slate-300"></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 w-full mb-6">
-              {[
-                { name: "Operator", phone: "+910000000001", role: "Command Room" },
-                { name: "Dispatcher", phone: "+910000000002", role: "Incident Control" },
-                { name: "Responder", phone: "+910000000003", role: "Field Unit" },
-                { name: "Supervisor", phone: "+910000000004", role: "Closure Review" },
-              ].map((item) => (
-                <button
-                  key={item.name}
-                  type="button"
-                  onClick={() => setDemoRole(item.phone)}
-                  className={`p-2.5 bg-white border rounded-xl text-left hover:border-orange-400 hover:shadow-xs transition-all cursor-pointer ${
-                    phone === item.phone ? "border-orange-500 ring-2 ring-orange-500/20 bg-orange-50/30" : "border-slate-200"
-                  }`}
-                >
-                  <div className="text-xs font-bold text-slate-800">{item.name}</div>
-                  <div className="text-[10px] font-medium text-slate-500">{item.role}</div>
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2.5 w-full mb-6">
+              {ROLES_INFO.map((item) => {
+                const Icon = item.icon;
+                const isSelected = selectedRole.id === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setDemoRole(item)}
+                    className={`p-3 bg-white border rounded-xl text-left transition-all cursor-pointer relative overflow-hidden ${
+                      isSelected ? item.activeColor : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon className={`w-4 h-4 ${isSelected ? "text-orange-600" : "text-slate-500"}`} />
+                      <span className="text-xs font-bold text-slate-900">{item.name}</span>
+                    </div>
+                    <div className="text-[10px] font-medium text-slate-500 truncate">{item.badge}</div>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Link to Citizen App */}
+            {/* Switch to Citizen Reporter */}
             <Link 
               href="/report" 
               className="group flex items-center gap-2 px-4 py-2 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-xl text-xs font-bold text-orange-700 transition-all"
