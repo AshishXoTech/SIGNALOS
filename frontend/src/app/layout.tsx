@@ -4,8 +4,23 @@ import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
-  title: "Signal OS — Emergency Coordination",
-  description: "Citizen-to-response coordination platform",
+  title: {
+    default: "Signal OS — National Emergency Coordination Platform | Government of India",
+    template: "%s | Signal OS — MHA / ERSS 112",
+  },
+  description:
+    "Signal OS is India's AI-driven national emergency coordination platform for first responders, dispatch, and multi-agency crisis operations under the Emergency Response Support System (ERSS 112).",
+  applicationName: "Signal OS",
+  authors: [{ name: "Ministry of Home Affairs / Signal OS" }],
+  keywords: [
+    "Signal OS",
+    "ERSS 112",
+    "Emergency Response",
+    "National Disaster Management",
+    "First Responders India",
+    "MHA",
+    "Government of India",
+  ],
   icons: {
     icon: "/signal-os-logo.svg",
     shortcut: "/signal-os-logo.svg",
