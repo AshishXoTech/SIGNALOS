@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Activity, CheckCircle2, LayoutDashboard, FileText, Flame, Users, ClipboardCheck, LogOut, Radio } from "lucide-react";
 import { SignalLogo } from "@/components/brand/SignalLogo";
+import GovHeader from "@/components/GovHeader";
+import SessionSecurityBanner from "@/components/SessionSecurityBanner";
 import { getRoleHomePath } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 
@@ -68,6 +70,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* 🇮🇳 OFFICIAL GOVERNMENT HEADER */}
+      <GovHeader />
+
+      {/* 🛡 DUTY SESSION SECURITY BANNER */}
+      <SessionSecurityBanner />
+
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className="command-sidebar w-64 border-r border-slate-900 flex flex-col shrink-0 shadow-[18px_0_48px_rgba(15,23,42,0.18)] z-10">
@@ -162,7 +170,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <button
                 onClick={() => { logout(); router.push("/login"); }}
-                className="w-full flex items-center justify-center gap-2 border-t border-white/10 px-3 py-2.5 text-xs font-black uppercase tracking-[0.16em] text-slate-200 transition-colors hover:bg-red-500/15 hover:text-red-100"
+                className="w-full flex items-center justify-center gap-2 border-t border-white/10 px-3 py-2.5 text-xs font-black uppercase tracking-[0.16em] text-slate-200 transition-colors hover:bg-red-500/15 hover:text-red-100 cursor-pointer"
               >
                 <LogOut className="w-4 h-4" /> Sign out
               </button>
