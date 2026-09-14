@@ -6,6 +6,11 @@ import { Toaster } from "react-hot-toast";
 export const metadata: Metadata = {
   title: "Signal OS — Emergency Coordination",
   description: "Citizen-to-response coordination platform",
+  icons: {
+    icon: "/signal-os-logo.svg",
+    shortcut: "/signal-os-logo.svg",
+    apple: "/signal-os-logo.svg",
+  },
   manifest: "/manifest.json",
 };
 

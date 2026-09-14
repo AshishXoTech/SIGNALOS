@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="96" height="96" rx="22" fill="#F8FAFC"/>
+  <path d="M48 7.5 78 18.8v22.6c0 20.5-12.5 38.9-30 46.9-17.5-8-30-26.4-30-46.9V18.8L48 7.5Z" fill="#0F172A"/>
+  <path d="M48 13.2 72.7 22.5v18.9c0 17-10 32.9-24.7 40.2-14.7-7.3-24.7-23.2-24.7-40.2V22.5L48 13.2Z" fill="white"/>
+  <path d="M27.9 24.9 48 17.3l20.1 7.6v13.3H27.9V24.9Z" fill="#FF671F"/>
+  <path d="M27.9 38.2h40.2v10.9H27.9V38.2Z" fill="#F8FAFC"/>
+  <path d="M27.9 49.1h40.2c-2 12.1-9.4 22.8-20.1 28.6-10.7-5.8-18.1-16.5-20.1-28.6Z" fill="#046A38"/>
+  <circle cx="48" cy="43.7" r="13" fill="white" stroke="#1E3A8A" stroke-width="2.6"/>
+  <g stroke="#1E3A8A" stroke-width="1.2" stroke-linecap="round">
+    <path d="M48 32.4v5.3"/>
+    <path d="M48 32.4v5.3" transform="rotate(15 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(30 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(45 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(60 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(75 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(90 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(105 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(120 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(135 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(150 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(165 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(180 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(195 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(210 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(225 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(240 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(255 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(270 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(285 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(300 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(315 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(330 48 43.7)"/>
+    <path d="M48 32.4v5.3" transform="rotate(345 48 43.7)"/>
+  </g>
+  <circle cx="48" cy="43.7" r="3.2" fill="#1E3A8A"/>
+  <path d="M33 58.8c4.8 4.8 9.8 8.3 15 10.8 5.2-2.5 10.2-6 15-10.8" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <path d="M17.5 31.8c-4.5 4.5-7 10.4-7 16.7s2.5 12.2 7 16.7M78.5 31.8c4.5 4.5 7 10.4 7 16.7s-2.5 12.2-7 16.7" stroke="#FF671F" stroke-width="4" stroke-linecap="round"/>
+  <path d="M23.5 37.2a16 16 0 0 0 0 22.6M72.5 37.2a16 16 0 0 1 0 22.6" stroke="#046A38" stroke-width="3" stroke-linecap="round"/>
+</svg>

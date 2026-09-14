@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardCheck, Check, X, Clock, MapPin, User,
-  FileText, AlertTriangle, ChevronRight, MessageSquare,
+  FileText, AlertTriangle, MessageSquare,
   ShieldCheck, Users
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -78,6 +78,54 @@ const INITIAL: ClosureRequest[] = [
     peopleAssisted: 0,
     remainingRisks: "None immediate. Monitor if heavy rain returns tonight.",
     status: "approved",
+  },
+  {
+    id: "cl-04",
+    incidentId: "INC-1035",
+    incidentTitle: "Warehouse smoke incident contained",
+    hazard: "🔥 Industrial Fire",
+    severity: "moderate",
+    location: "Peenya Industrial Area, Bengaluru",
+    teamName: "Hazmat Support Hotel",
+    submittedBy: "Station Officer Rao",
+    submittedAt: new Date(Date.now() - 5 * 3600000).toISOString(),
+    actionsTaken:
+      "Isolated the electrical panel, completed thermal sweep, ventilated the shed, and confirmed no trapped civilians or secondary ignition points.",
+    peopleAssisted: 6,
+    remainingRisks: "Minor smoke damage only. Facility manager instructed to maintain a fire watch overnight.",
+    status: "approved",
+  },
+  {
+    id: "cl-05",
+    incidentId: "INC-1037",
+    incidentTitle: "Cyclonic winds damage coastal power corridor",
+    hazard: "🌀 Cyclone",
+    severity: "high",
+    location: "Puri Coastal Grid, Odisha",
+    teamName: "Coastal Response Foxtrot",
+    submittedBy: "Team Lead Das",
+    submittedAt: new Date(Date.now() - 42 * 60000).toISOString(),
+    actionsTaken:
+      "Evacuated 14 residents from the exposed lane and cordoned off three fallen power poles while the utility crew secured the feeder.",
+    peopleAssisted: 14,
+    remainingRisks: "Power restoration pending. Two roads remain restricted until debris clearance is complete.",
+    status: "needs_info",
+  },
+  {
+    id: "cl-06",
+    incidentId: "INC-1036",
+    incidentTitle: "Structural cracks reported across apartment block",
+    hazard: "🏚️ Earthquake",
+    severity: "critical",
+    location: "Sikkim Market Road, Gangtok",
+    teamName: "Urban Search Golf",
+    submittedBy: "Responder Tashi",
+    submittedAt: new Date(Date.now() - 18 * 60000).toISOString(),
+    actionsTaken:
+      "Completed a rapid structural assessment, evacuated the affected wing, and placed temporary shoring at the north stairwell.",
+    peopleAssisted: 42,
+    remainingRisks: "Detailed engineering inspection required before residents can return.",
+    status: "pending",
   },
 ];
 

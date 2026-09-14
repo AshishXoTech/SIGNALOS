@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FileText, Check, X, Clock, MapPin,
+  Check, X, Clock, MapPin,
   Search, Eye, Phone, ShieldAlert
 } from "lucide-react";
 import { HAZARD_TYPES } from "@/lib/constants";
 import { formatTimeAgo } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { api } from "@/lib/api-client";
 
 interface DemoReport {
   id: string;
@@ -60,6 +61,42 @@ const INITIAL_REPORTS: DemoReport[] = [
     review: "needs_review",
     contact: "+91 91234 56789",
   },
+  {
+    id: "rep-104",
+    ref: "SG-9009",
+    hazard: "cyclone",
+    description: "Roof sheets have fallen near the coastal school after severe wind gusts. Children have been moved indoors.",
+    landmark: "Puri Coastal School",
+    lat: 19.8135,
+    lng: 85.8312,
+    received_at: new Date(Date.now() - 38 * 60000).toISOString(),
+    review: "needs_review",
+    contact: "+91 90000 10004",
+  },
+  {
+    id: "rep-105",
+    ref: "SG-9008",
+    hazard: "earthquake",
+    description: "Multiple residents report fresh cracks in load-bearing walls after tremors. No injuries confirmed.",
+    landmark: "MG Marg, Gangtok",
+    lat: 27.3314,
+    lng: 88.6138,
+    received_at: new Date(Date.now() - 52 * 60000).toISOString(),
+    review: "unreviewed",
+    contact: "+91 90000 10005",
+  },
+  {
+    id: "rep-106",
+    ref: "SG-9007",
+    hazard: "fire",
+    description: "Smoke has stopped and fire crews report the industrial shed is safe for re-entry.",
+    landmark: "Peenya Industrial Area",
+    lat: 13.0324,
+    lng: 77.5199,
+    received_at: new Date(Date.now() - 95 * 60000).toISOString(),
+    review: "confirmed",
+    contact: null,
+  },
 ];
 
 export default function ReportsQueuePage() {
@@ -67,6 +104,30 @@ export default function ReportsQueuePage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
   const [selected, setSelected] = useState<DemoReport | null>(null);
+
+  useEffect(() => {
+    api.getReports()
+      .then((data) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setReports((data as Record<string, unknown>[]).map((item) => ({
+          id: String(item.id),
+          ref: `SG-${String(item.id).slice(0, 8).toUpperCase()}`,
+          hazard: String(item.disaster_type || "other"),
+          description: String(item.description || ""),
+          landmark: String(item.address_text || `${Number(item.latitude).toFixed(4)}, ${Number(item.longitude).toFixed(4)}`),
+          lat: Number(item.latitude),
+          lng: Number(item.longitude),
+          received_at: String(item.reported_at || item.created_at || new Date().toISOString()),
+          review: item.status === "verified"
+            ? "confirmed"
+            : item.status === "rejected"
+            ? "disputed"
+            : "unreviewed",
+          contact: null,
+        })));
+      })
+      .catch(() => {});
+  }, []);
 
   const handleReview = (id: string, status: DemoReport["review"]) => {
     setReports((prev) =>
@@ -173,7 +234,7 @@ export default function ReportsQueuePage() {
                 </div>
 
                 <p className="text-sm text-slate-600 font-medium line-clamp-2 mb-4">
-                  "{r.description}"
+                  &quot;{r.description}&quot;
                 </p>
 
                 <div className="flex items-center gap-4 text-xs font-semibold text-slate-400">
@@ -216,7 +277,7 @@ export default function ReportsQueuePage() {
                   <div>
                     <label className="data-label block mb-2">Citizen Description</label>
                     <p className="text-sm font-medium text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed">
-                      "{selected.description}"
+                      &quot;{selected.description}&quot;
                     </p>
                   </div>
 

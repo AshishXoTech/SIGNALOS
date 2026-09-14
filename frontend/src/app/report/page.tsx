@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin, Send, AlertTriangle, Phone,
   Loader2, CheckCircle2, Mic, Square, Trash2, Play,
-  ShieldAlert, Shield
+  ShieldAlert
 } from "lucide-react";
+import { SignalLogo } from "@/components/brand/SignalLogo";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { queueReport } from "@/lib/offline-queue";
+import { api } from "@/lib/api-client";
 import toast from "react-hot-toast";
 
 // 12 World-Class Emergency Categories with exact backend mapping
@@ -164,7 +166,8 @@ export default function ReportPage() {
 
   // Prevent SSR Hydration mismatches
   useEffect(() => {
-    setMounted(true);
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const requestLoc = () => {
@@ -234,21 +237,7 @@ export default function ReportPage() {
     };
 
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
-      const res = await fetch(`${API}/api/v1/reports`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify(apiPayload),
-      });
-
-      if (!res.ok) {
-        throw new Error("api_error");
-      }
-
-      const data = await res.json();
+      const data = await api.submitReport(apiPayload);
       setReference(`IND-${String(data.id || submissionId).slice(0, 5).toUpperCase()}`);
 
       if (typeof data.trust_score === "number") {
@@ -313,11 +302,7 @@ export default function ReportPage() {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.08)] relative overflow-hidden">
-              {/* Subtle Ashok Chakra-like radial burst behind icon */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-50 to-white opacity-50"></div>
-              <Shield className="w-7 h-7 text-[#FF9933] relative z-10" />
-            </div>
+            <SignalLogo className="h-14 w-14" />
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -332,6 +317,25 @@ export default function ReportPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="mb-6 grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {[
+            { label: "Report", text: "Citizen signal", icon: AlertTriangle, color: "text-orange-600 bg-orange-50" },
+            { label: "Verify", text: "Trust check", icon: CheckCircle2, color: "text-blue-700 bg-blue-50" },
+            { label: "Respond", text: "112 grid", icon: Phone, color: "text-emerald-700 bg-emerald-50" },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="border-r border-slate-100 p-3 last:border-r-0">
+                <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-xl ${item.color}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{item.label}</div>
+                <div className="mt-0.5 text-xs font-black text-slate-800">{item.text}</div>
+              </div>
+            );
+          })}
         </div>
 
         <AnimatePresence mode="wait">

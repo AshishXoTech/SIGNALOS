@@ -2,11 +2,14 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   Flame, FileText, Users, CheckCircle2, MapPin,
-  Activity, ArrowUpRight, ChevronRight, Loader2, Radio, ShieldCheck,
+  Activity, ArrowUpRight, ChevronRight, Loader2, Radio,
+  BellRing, Languages, Route, ShieldCheck, Landmark, Database,
 } from "lucide-react";
+import { SignalLogo } from "@/components/brand/SignalLogo";
 import { HAZARD_TYPES } from "@/lib/constants";
 import { liveGet } from "@/lib/live";
 
@@ -79,12 +82,37 @@ const FALLBACK_INCIDENTS: IncidentRow[] = [
     lat: 28.6562,
     lng: 77.2410,
   },
+  {
+    id: "INC-1037",
+    hazard: "cyclone",
+    severity: "high",
+    status: "Active",
+    title: "Cyclonic winds damage coastal power corridor",
+    location: "Puri Coastal Grid, Odisha",
+    team: "Coastal Response Foxtrot",
+    lat: 19.8135,
+    lng: 85.8312,
+  },
+  {
+    id: "INC-1036",
+    hazard: "earthquake",
+    severity: "critical",
+    status: "Triaged",
+    title: "Structural cracks reported across apartment block",
+    location: "Sikkim Market Road, Gangtok",
+    team: "Urban Search Golf",
+    lat: 27.3314,
+    lng: 88.6138,
+  },
 ];
 
 const FALLBACK_REPORTS = [
   { id: "REP-992", hazard: "landslide", place: "Munnar Bridge", ago: "2m", state: "Unreviewed" },
   { id: "REP-991", hazard: "flooding", place: "Jorhat Village", ago: "5m", state: "Unreviewed" },
   { id: "REP-990", hazard: "road_accident", place: "Guwahati Bypass", ago: "8m", state: "Needs review" },
+  { id: "REP-989", hazard: "cyclone", place: "Puri Coastal School", ago: "12m", state: "Needs review" },
+  { id: "REP-988", hazard: "earthquake", place: "MG Marg, Gangtok", ago: "18m", state: "Unreviewed" },
+  { id: "REP-987", hazard: "fire", place: "Peenya Industrial Area", ago: "31m", state: "Confirmed" },
 ];
 
 const sevStyle: Record<string, string> = {
@@ -95,7 +123,46 @@ const sevStyle: Record<string, string> = {
   low: "bg-emerald-100 text-emerald-700 border-emerald-200",
 };
 
+const NATIONAL_CAPABILITIES = [
+  {
+    title: "Citizen-to-command signal",
+    copy: "Geo-tagged reports move from citizen intake to command review with severity, location, and media context ready for triage.",
+    metric: "Report → triage",
+    icon: FileText,
+    tone: "text-orange-700 bg-orange-50 border-orange-200",
+  },
+  {
+    title: "Multi-hazard early warning",
+    copy: "Designed around flood, fire, earthquake, landslide, cyclone, and other hazard workflows so teams see a unified risk picture.",
+    metric: "All-hazard grid",
+    icon: BellRing,
+    tone: "text-blue-700 bg-blue-50 border-blue-200",
+  },
+  {
+    title: "Geo-targeted dispatch",
+    copy: "Incidents appear on the operational map with nearby assignments, team status, and field navigation context for faster routing.",
+    metric: "Map-led routing",
+    icon: Route,
+    tone: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  },
+  {
+    title: "Multilingual public reach",
+    copy: "Built to support India-scale communication patterns where warnings and updates must reach citizens in their language and locality.",
+    metric: "Local-first",
+    icon: Languages,
+    tone: "text-indigo-700 bg-indigo-50 border-indigo-200",
+  },
+];
+
+const GOVERNMENT_BRIEF = [
+  "Control-room situation awareness for district, state, and national command teams.",
+  "Resource mobilization view for SDRF, NDRF, fire, police, medical, and local administration.",
+  "Supervisor closure review so every incident has accountability before it is sealed.",
+  "Audit-ready operating picture for preparedness, response, mitigation, and post-incident learning.",
+];
+
 export default function DashboardPage() {
+  const router = useRouter();
   const [now, setNow] = useState("");
   const [incidents, setIncidents] = useState<IncidentRow[]>(FALLBACK_INCIDENTS);
   const [reports, setReports] = useState(FALLBACK_REPORTS);
@@ -117,18 +184,18 @@ export default function DashboardPage() {
 
       if (health?.status === "healthy" || health?.status === "ok") {
         setLiveMode("live");
-        const remote = await liveGet<unknown>("/api/incidents/", null);
+        const remote = await liveGet<unknown>("/api/incidents", null);
         // If shape unexpected, keep fallback — hackathon safe
         if (remote && Array.isArray(remote) && remote.length > 0) {
           // map loosely if backend returns list
           try {
             const mapped = (remote as Record<string, unknown>[]).slice(0, 8).map((r, i) => ({
               id: String(r.id || `INC-${i}`),
-              hazard: String(r.hazard_type || r.hazard || "other"),
+              hazard: String(r.disaster_type || r.hazard_type || r.hazard || "other"),
               severity: String(r.severity || "moderate"),
-              status: String(r.status || "Active"),
-              title: String(r.summary || r.title || "Incident"),
-              location: String(r.location_description || r.location || "—"),
+              status: String(r.status || "active"),
+              title: String(r.title || r.summary || "Incident"),
+              location: String(r.location_description || r.location || `${Number(r.latitude || r.lat || 0).toFixed(4)}, ${Number(r.longitude || r.lng || 0).toFixed(4)}`),
               team: (r.assigned_team_name as string) || null,
               lat: Number(r.latitude || r.lat || 26.14),
               lng: Number(r.longitude || r.lng || 91.73),
@@ -185,8 +252,8 @@ export default function DashboardPage() {
         <div className="absolute right-16 top-16 hidden h-14 w-14 rounded-full border border-blue-900/10 lg:block" />
         <div className="relative flex flex-col xl:flex-row xl:items-center justify-between gap-5 p-5 md:p-6">
           <div className="flex items-start gap-4">
-            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-xl shadow-orange-500/25">
-              <ShieldCheck className="h-7 w-7" />
+            <div className="relative shrink-0">
+              <SignalLogo className="h-16 w-16 rounded-2xl" />
               <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
             </div>
             <div>
@@ -275,6 +342,73 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* National mission layer */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1.45fr_0.9fr] gap-6 mb-6">
+        <div className="command-card overflow-hidden">
+          <div className="section-command-header px-5 py-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-orange-200">India Security Upgrade</p>
+            <h2 className="mt-1 text-xl font-black text-white">From public signal to coordinated rescue</h2>
+            <p className="mt-1 max-w-3xl text-xs md:text-sm font-medium text-slate-300">
+              Signal OS turns citizen reports, field movement, and command decisions into one operational picture for faster, calmer disaster response.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-white/85">
+            {NATIONAL_CAPABILITIES.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${item.tone}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+                      {item.metric}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-black text-slate-900">{item.title}</h3>
+                  <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">{item.copy}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="command-card overflow-hidden">
+          <div className="h-1.5 bg-[linear-gradient(90deg,#ff671f_0_33%,#ffffff_33%_66%,#046a38_66%_100%)]" />
+          <div className="p-5">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg shadow-slate-900/20">
+                <Landmark className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-orange-600">Government Briefing</p>
+                <h2 className="text-lg font-black text-slate-950">Why this matters for Bharat</h2>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {GOVERNMENT_BRIEF.map((point) => (
+                <div key={point} className="flex gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <p className="text-xs font-semibold leading-relaxed text-slate-600">{point}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+                <Database className="mb-2 h-4 w-4 text-blue-700" />
+                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Evidence</div>
+                <div className="text-sm font-black text-slate-900">Decision log</div>
+              </div>
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                <ShieldCheck className="mb-2 h-4 w-4 text-emerald-700" />
+                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Trust</div>
+                <div className="text-sm font-black text-slate-900">Verified flow</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* MAP */}
       <div className="command-card command-panel overflow-hidden mb-6">
         <div className="section-command-header px-4 py-3 flex items-center justify-between">
@@ -296,7 +430,7 @@ export default function DashboardPage() {
               zoom={5}
               className="h-[300px] md:h-[380px] w-full rounded-xl border border-slate-200 overflow-hidden shadow-inner"
               onMarkerClick={(id) => {
-                window.location.href = `/dashboard/incidents/${id}`;
+                router.push(`/dashboard/incidents/${id}`);
               }}
             />
           ) : (

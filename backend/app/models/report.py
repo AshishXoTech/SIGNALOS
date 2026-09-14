@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 import enum
-from sqlalchemy import Column, String, Float, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, Float, DateTime, Text, ForeignKey, cast
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, foreign
 from geoalchemy2 import Geography
 
 from app.database import Base
@@ -66,4 +66,10 @@ class Report(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     incident = relationship("Incident", back_populates="reports")
+    reporter = relationship(
+        "User",
+        back_populates="reports",
+        primaryjoin="foreign(Report.user_id) == cast(User.id, String)",
+        viewonly=True,
+    )
     verification_logs = relationship("VerificationLog", back_populates="report", cascade="all, delete-orphan")

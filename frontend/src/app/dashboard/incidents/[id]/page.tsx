@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, MapPin, Clock, ShieldAlert, Navigation, 
-  CheckCircle2, Flame, Users, Activity, Crosshair, 
+  ArrowLeft, MapPin, ShieldAlert, Navigation,
+  CheckCircle2, Activity, Crosshair,
   Truck, AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";

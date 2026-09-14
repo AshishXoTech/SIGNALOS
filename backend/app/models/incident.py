@@ -52,3 +52,4 @@ class Incident(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     reports = relationship("Report", back_populates="incident")
+    alerts = relationship("Alert", back_populates="incident")

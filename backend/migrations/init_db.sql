@@ -40,7 +40,32 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 -- ============================================================
--- 3. REPORTS TABLE (core user submissions)
+-- 3. USERS (workspace authentication)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS users (
+    id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email             VARCHAR(255) NOT NULL UNIQUE,
+    username          VARCHAR(100) NOT NULL UNIQUE,
+    hashed_password   VARCHAR(255) NOT NULL,
+    full_name         VARCHAR(255),
+    role              VARCHAR(50) NOT NULL DEFAULT 'reporter',
+    is_active         BOOLEAN NOT NULL DEFAULT TRUE,
+    is_verified       BOOLEAN NOT NULL DEFAULT FALSE,
+    reputation_score  INTEGER NOT NULL DEFAULT 50,
+    total_reports     INTEGER NOT NULL DEFAULT 0,
+    verified_reports  INTEGER NOT NULL DEFAULT 0,
+    avatar_url        TEXT,
+    phone             VARCHAR(20),
+    bio               TEXT,
+    created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_login        TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+
+-- ============================================================
+-- 4. REPORTS TABLE (core user submissions)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS reports (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

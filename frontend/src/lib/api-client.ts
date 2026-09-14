@@ -1,15 +1,22 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+const DEFAULT_API_ORIGIN = "http://localhost:8001";
+
+function normalizeApiOrigin(value?: string): string {
+  const raw = (value || DEFAULT_API_ORIGIN).replace(/\/+$/, "");
+  return raw.replace(/\/api\/v1$/, "");
+}
+
+export const API_ORIGIN = normalizeApiOrigin(process.env.NEXT_PUBLIC_API_URL);
+export const API_V1_URL = `${API_ORIGIN}/api/v1`;
+export const WS_URL =
+  process.env.NEXT_PUBLIC_WS_URL ||
+  API_ORIGIN.replace(/^http/, "ws") + "/ws/live";
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
 class ApiClient {
-  private baseUrl: string;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-  }
+  constructor(private readonly baseUrl: string) {}
 
   private getToken(): string | null {
     if (typeof window === "undefined") return null;
@@ -18,19 +25,17 @@ class ApiClient {
 
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { skipAuth, ...fetchOptions } = options;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...((fetchOptions.headers as Record<string, string>) || {}),
-    };
+    const headers = new Headers(fetchOptions.headers);
+    if (!headers.has("Content-Type") && !(fetchOptions.body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
+    }
 
     if (!skipAuth) {
       const token = this.getToken();
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (token) headers.set("Authorization", `Bearer ${token}`);
     }
 
-    const url = `${this.baseUrl}${path}`;
-
-    const res = await fetch(url, {
+    const res = await fetch(`${this.baseUrl}${path}`, {
       ...fetchOptions,
       headers,
     });
@@ -44,34 +49,26 @@ class ApiClient {
     return res.json();
   }
 
-  // ============================================================
-  // 1. SYSTEM & HEALTH
-  // ============================================================
-  getHealth = () =>
-    this.request("/api/v1/health", { skipAuth: true });
+  getHealth = () => this.request("/api/v1/health", { skipAuth: true });
 
-  // ============================================================
-  // 2. REPORTS (Citizen & Control Room)
-  // ============================================================
-  submitReport = (data: Record<string, unknown>) =>
-    this.request("/api/v1/reports", {
+  submitReport = <T = { id: string; trust_score?: number }>(data: Record<string, unknown>) =>
+    this.request<T>("/api/v1/reports", {
       method: "POST",
       body: JSON.stringify(data),
       skipAuth: true,
     });
 
   getReports = (params?: Record<string, string>) => {
-    const q = params ? "?" + new URLSearchParams(params).toString() : "";
+    const q = params ? `?${new URLSearchParams(params).toString()}` : "";
     return this.request(`/api/v1/reports${q}`, { skipAuth: true });
   };
 
   getReport = (id: string) =>
     this.request(`/api/v1/reports/${id}`, { skipAuth: true });
 
-  trackReport = (id: string) =>
-    this.request(`/api/v1/reports/${id}`, { skipAuth: true });
+  trackReport = (id: string) => this.getReport(id);
 
-  getNearbyReports = (lat: number, lng: number, radiusKm: number = 5) =>
+  getNearbyReports = (lat: number, lng: number, radiusKm = 5) =>
     this.request(`/api/v1/reports/nearby/${lat}/${lng}?radius_km=${radiusKm}`, {
       skipAuth: true,
     });
@@ -89,11 +86,8 @@ class ApiClient {
       skipAuth: true,
     });
 
-  // ============================================================
-  // 3. INCIDENTS & CLUSTERING (Control Room)
-  // ============================================================
   getIncidents = (params?: Record<string, string>) => {
-    const q = params ? "?" + new URLSearchParams(params).toString() : "";
+    const q = params ? `?${new URLSearchParams(params).toString()}` : "";
     return this.request(`/api/v1/incidents${q}`, { skipAuth: true });
   };
 
@@ -104,7 +98,10 @@ class ApiClient {
     this.request("/api/v1/incidents/stats/summary", { skipAuth: true });
 
   runClustering = () =>
-    this.request("/api/v1/incidents/cluster/run", { method: "POST", skipAuth: true });
+    this.request("/api/v1/incidents/cluster/run", {
+      method: "POST",
+      skipAuth: true,
+    });
 
   getIncidentTimeline = (id: string) =>
     this.request(`/api/v1/incidents/${id}/timeline`, { skipAuth: true });
@@ -121,38 +118,39 @@ class ApiClient {
       body: JSON.stringify({ report_id: reportId }),
     });
 
-  // ============================================================
-  // 4. AUTHENTICATION
-  // ============================================================
-  login = (phone: string, password: string) =>
-    this.request("/api/v1/auth/login", {
+  login = (username: string, password: string) =>
+    this.request<{
+      access_token: string;
+      token_type: string;
+      user: {
+        id: string;
+        full_name: string | null;
+        role: string;
+        [key: string]: unknown;
+      };
+    }>("/api/v1/auth/login", {
       method: "POST",
-      body: JSON.stringify({ phone, password }),
+      body: JSON.stringify({ username, password }),
       skipAuth: true,
     });
 
-  // ============================================================
-  // 5. TEAMS & DISPATCH
-  // ============================================================
+  getMe = () => this.request("/api/v1/auth/me");
+
   getTeams = (params?: Record<string, string>) => {
-    const q = params ? "?" + new URLSearchParams(params).toString() : "";
+    const q = params ? `?${new URLSearchParams(params).toString()}` : "";
     return this.request(`/api/v1/teams${q}`);
   };
 
   suggestTeams = (lat: number, lng: number, hazard: string) =>
     this.request(`/api/v1/teams/suggest?latitude=${lat}&longitude=${lng}&hazard_type=${hazard}`);
 
-  // ============================================================
-  // 6. ASSIGNMENTS
-  // ============================================================
   assignTeam = (incidentId: string, teamId: string) =>
     this.request(`/api/v1/assignments/incidents/${incidentId}/assign`, {
       method: "POST",
       body: JSON.stringify({ team_id: teamId }),
     });
 
-  getMyAssignments = () =>
-    this.request("/api/v1/assignments/me");
+  getMyAssignments = () => this.request("/api/v1/assignments/me");
 
   transitionAssignment = (id: string, status: string, reason?: string) =>
     this.request(`/api/v1/assignments/${id}/transition`, {
@@ -160,17 +158,13 @@ class ApiClient {
       body: JSON.stringify({ new_status: status, reason }),
     });
 
-  // ============================================================
-  // 7. CLOSURES & EVIDENCE
-  // ============================================================
   submitClosure = (incidentId: string, data: Record<string, unknown>) =>
     this.request(`/api/v1/closures/incidents/${incidentId}/closure`, {
       method: "POST",
       body: JSON.stringify(data),
     });
 
-  getPendingClosures = () =>
-    this.request("/api/v1/closures/pending");
+  getPendingClosures = () => this.request("/api/v1/closures/pending");
 
   reviewClosure = (id: string, decision: string, notes?: string) =>
     this.request(`/api/v1/closures/${id}/review`, {
@@ -179,4 +173,4 @@ class ApiClient {
     });
 }
 
-export const api = new ApiClient(API_URL);
+export const api = new ApiClient(API_ORIGIN);

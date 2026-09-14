@@ -14,6 +14,7 @@ interface AppState {
 
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
+  hydrate: () => void;
   setWsStatus: (status: "connecting" | "connected" | "disconnected") => void;
   setSidebarOpen: (open: boolean) => void;
   logout: () => void;
@@ -21,7 +22,7 @@ interface AppState {
 
 export const useStore = create<AppState>((set) => ({
   user: null,
-  token: typeof window !== "undefined" ? localStorage.getItem("signal_token") : null,
+  token: null,
   wsStatus: "disconnected",
   sidebarOpen: true,
 
@@ -37,12 +38,29 @@ export const useStore = create<AppState>((set) => ({
     set({ token });
   },
 
+  hydrate: () => {
+    const storedUser = localStorage.getItem("signal_user");
+    const token = localStorage.getItem("signal_token");
+    let user: User | null = null;
+
+    if (storedUser) {
+      try {
+        user = JSON.parse(storedUser) as User;
+      } catch {
+        localStorage.removeItem("signal_user");
+      }
+    }
+
+    set({ user, token });
+  },
+
   setWsStatus: (wsStatus) => set({ wsStatus }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
 
   logout: () => {
     localStorage.removeItem("signal_token");
     localStorage.removeItem("signal_user");
+    document.cookie = "signal_token=; path=/; max-age=0; SameSite=Lax";
     set({ user: null, token: null });
   },
 }));

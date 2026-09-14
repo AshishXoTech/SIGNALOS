@@ -10,11 +10,12 @@ export function OfflineIndicator() {
     const handleOffline = () => setOffline(true);
     const handleOnline = () => setOffline(false);
 
-    setOffline(!navigator.onLine);
+    const timer = window.setTimeout(() => setOffline(!navigator.onLine), 0);
     window.addEventListener("offline", handleOffline);
     window.addEventListener("online", handleOnline);
 
     return () => {
+      window.clearTimeout(timer);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
     };

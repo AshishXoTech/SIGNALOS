@@ -2,53 +2,42 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Shield, Phone, Lock, AlertTriangle, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Phone, Lock, AlertTriangle, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
+import { SignalLogo } from "@/components/brand/SignalLogo";
+import { api } from "@/lib/api-client";
+import { getRoleHomePath, getRoleWorkspaceName } from "@/lib/routes";
+import { useStore } from "@/lib/store";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [phone, setPhone] = useState("+910000000001");
-  const [password, setPassword] = useState("•••••••");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const setUser = useStore((state) => state.setUser);
+  const setToken = useStore((state) => state.setToken);
 
-  // 100% ROCK-SOLID AUTH & REDIRECT FIX
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    if (typeof window !== "undefined") {
-      const mockToken = "demo-token-signal-os-12345";
-      const mockUser = JSON.stringify({
-        id: "usr-001",
-        name: "Command Duty Officer",
-        role: "Operator",
-        phone: phone
-      });
-
-      // 1. Set LocalStorage keys
-      localStorage.setItem("signal_token", mockToken);
-      localStorage.setItem("signal_user", mockUser);
-      localStorage.setItem("token", mockToken);
-      localStorage.setItem("user", mockUser);
-      localStorage.setItem("isAuthenticated", "true");
-
-      // 2. Set Cookies (Critical for Next.js Middleware / Server Guards)
-      document.cookie = `signal_token=${mockToken}; path=/; max-age=86400; SameSite=Lax`;
-      document.cookie = `token=${mockToken}; path=/; max-age=86400; SameSite=Lax`;
-      document.cookie = `auth_token=${mockToken}; path=/; max-age=86400; SameSite=Lax`;
-      document.cookie = `session=${mockToken}; path=/; max-age=86400; SameSite=Lax`;
+    try {
+      const response = await api.login(phone, password);
+      setToken(response.access_token);
+      setUser({ ...response.user, full_name: response.user.full_name || response.user.role });
+      document.cookie = `signal_token=${encodeURIComponent(response.access_token)}; path=/; max-age=86400; SameSite=Lax`;
+      toast.success(`Authenticated. Entering ${getRoleWorkspaceName(response.user.role)}...`);
+      router.replace(getRoleHomePath(response.user.role));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to authenticate");
+    } finally {
+      setIsLoading(false);
     }
-
-    toast.success("Authenticated. Entering Command Room...");
-
-    // 3. Replace location to bypass back-button loop & trigger clean load
-    setTimeout(() => {
-      window.location.replace("/dashboard");
-    }, 300);
   };
 
   const setDemoRole = (rolePhone: string) => {
     setPhone(rolePhone);
-    setPassword("•••••••");
+    setPassword("");
   };
 
   return (
@@ -74,10 +63,7 @@ export default function LoginPage() {
         
         {/* Header Section */}
         <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-xl shadow-orange-500/30 mb-5 relative border border-orange-400">
-            <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20 rounded-2xl"></div>
-            <Shield className="w-8 h-8 text-white relative z-10" />
-          </div>
+          <SignalLogo className="mb-5 h-20 w-20 rounded-3xl" />
           
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">Signal OS</h1>
@@ -93,7 +79,7 @@ export default function LoginPage() {
           
           <p className="text-xs font-medium text-slate-500 max-w-sm leading-relaxed border-t border-slate-200 pt-3">
             Mission: <span className="font-bold text-slate-700">Zero Lives Lost.</span> <br/>
-            Empowering India's first responders with AI-driven spatial intelligence.
+            Empowering India&apos;s first responders with AI-driven spatial intelligence.
           </p>
         </div>
 

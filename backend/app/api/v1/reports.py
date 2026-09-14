@@ -11,6 +11,12 @@ from app.models.audit_event import AuditEvent
 from app.schemas.report import ReportCreate, ReportResponse
 from app.services.consensus_engine import consensus_engine
 from app.core.websocket_manager import websocket_manager
+from pydantic import BaseModel
+
+
+class ReportReviewPayload(BaseModel):
+    evidence_review: str
+    review_notes: Optional[str] = None
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -100,6 +106,41 @@ async def list_reports(
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.post("/{report_id}/reviews", response_model=ReportResponse)
+async def review_report(
+    report_id: UUID,
+    payload: ReportReviewPayload,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Report).where(Report.id == report_id))
+    report = result.scalar_one_or_none()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    decision = payload.evidence_review.lower()
+    if decision in {"confirmed", "verified", "approve", "approved"}:
+        report.status = "verified"
+    elif decision in {"disputed", "rejected", "false_alarm"}:
+        report.status = "rejected"
+    else:
+        report.status = "verifying"
+
+    await db.commit()
+    await db.refresh(report)
+    return report
+
+
+@router.post("/batch-sync")
+async def batch_sync_reports(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    reports = payload.get("reports", [])
+    if not isinstance(reports, list):
+        raise HTTPException(status_code=422, detail="reports must be a list")
+    return {"accepted": len(reports), "reports": reports}
 
 
 @router.get("/{report_id}", response_model=ReportResponse)

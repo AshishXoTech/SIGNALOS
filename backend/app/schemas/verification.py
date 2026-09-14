@@ -22,3 +22,27 @@ class VerificationResult(BaseModel):
     weather_details: Dict[str, Any] = {}
     
     verified_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class VerificationResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: UUID
+    report_id: UUID
+    vision_score: Optional[float] = None
+    text_nlp_score: Optional[float] = None
+    geo_score: Optional[float] = None
+    crowd_score: Optional[float] = None
+    weather_score: Optional[float] = None
+    final_trust: float
+    decision: str
+    confidence: Optional[float] = None
+    verified_at: datetime
+
+
+class VerificationSummary(BaseModel):
+    total_verified: int
+    total_debunked: int
+    total_pending: int
+    average_trust_score: float
+    average_processing_time_ms: float

@@ -6,9 +6,9 @@ from typing import Optional
 from uuid import UUID
 
 from app.database import get_db
-from app.models.verification import VerificationLog
+from app.models.verification_log import VerificationLog
 from app.schemas.verification import VerificationResponse, VerificationSummary
-from app.services.ai_consensus import ai_engine
+from app.services.consensus_engine import consensus_engine
 
 router = APIRouter()
 
@@ -87,5 +87,5 @@ async def verify_report(
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
 
-    verification_result = await ai_engine.verify_report(report_id, db, "manual")
+    verification_result = await consensus_engine.verify_report(report, db)
     return verification_result

@@ -13,7 +13,7 @@ from app.schemas.alert import (
     AlertSubscriptionCreate, AlertSubscriptionResponse,
 )
 from app.dependencies import get_current_user, get_current_user_optional
-from app.core.websocket_manager import ws_manager
+from app.core.websocket_manager import websocket_manager
 from datetime import datetime
 
 router = APIRouter()
@@ -63,7 +63,7 @@ async def create_alert(
     await db.refresh(alert)
 
     # Broadcast
-    await ws_manager.broadcast_to_all({
+    await websocket_manager.broadcast("alert.new", {
         "type": "alert",
         "data": {
             "id": str(alert.id),

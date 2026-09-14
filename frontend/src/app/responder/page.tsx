@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ShieldCheck, Navigation, CheckCircle2, MapPin,
-  FileText, Phone, Clock, AlertTriangle, ChevronRight,
-  Radio, Users, ArrowLeft, Send, Loader2
+  Navigation, CheckCircle2, MapPin,
+  FileText, Phone, AlertTriangle, ChevronRight,
+  Radio, Users, ArrowLeft, Send, Loader2, LogOut
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { SignalLogo } from "@/components/brand/SignalLogo";
+import { getRoleHomePath } from "@/lib/routes";
+import { useStore } from "@/lib/store";
 
 type Stage =
   | "list"
@@ -70,6 +74,8 @@ const SEV: Record<string, string> = {
 };
 
 export default function ResponderPage() {
+  const router = useRouter();
+  const { user, logout, hydrate } = useStore();
   const [assignments, setAssignments] = useState(INITIAL);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("list");
@@ -77,6 +83,22 @@ export default function ResponderPage() {
   const [people, setPeople] = useState("0");
   const [risks, setRisks] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  useEffect(() => {
+    if (!user && typeof window !== "undefined" && !localStorage.getItem("signal_user")) {
+      router.replace("/login");
+      return;
+    }
+
+    if (user) {
+      const homePath = getRoleHomePath(user.role);
+      if (homePath !== "/responder") router.replace(homePath);
+    }
+  }, [router, user]);
 
   const active = assignments.find((a) => a.id === activeId) || null;
 
@@ -114,35 +136,53 @@ export default function ResponderPage() {
     setRisks("");
   };
 
+  const handleSignOut = () => {
+    logout();
+    router.replace("/login");
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-md mx-auto border-x border-slate-200 shadow-2xl">
+    <div className="min-h-screen bg-[linear-gradient(135deg,rgba(255,103,31,0.08),#f8fafc_36%,rgba(4,106,56,0.08))] flex flex-col max-w-md mx-auto border-x border-slate-200 shadow-2xl">
+      <div className="h-1.5 bg-[linear-gradient(90deg,#ff671f_0_33%,#ffffff_33%_66%,#046a38_66%_100%)]" />
       {/* Top bar */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-md shadow-orange-500/25">
-            <ShieldCheck className="w-5 h-5 text-white" />
-          </div>
+          <SignalLogo className="h-11 w-11 rounded-xl shadow-md shadow-orange-500/25" />
           <div>
-            <div className="text-sm font-bold text-slate-900 leading-tight">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 leading-tight">
               SDRF Unit Alpha
+              <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-orange-700 border border-orange-100">
+                Bharat
+              </span>
             </div>
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Field workspace
+              Field workspace · Seva first
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-bold text-emerald-700 uppercase">Live</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-emerald-700 uppercase">Live</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            aria-label="Sign out"
+            title="Sign out"
+            className="h-8 w-8 rounded-full border border-slate-200 bg-white text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-center"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
       {/* Demo strip */}
-      <div className="bg-amber-50 border-b border-amber-200 px-3 py-1.5 text-[10px] font-medium text-amber-800 text-center">
-        DEMO — Not linked to real dispatch. Call 112 in real emergencies.
+      <div className="bg-[linear-gradient(90deg,rgba(255,103,31,0.12),rgba(255,255,255,0.96),rgba(4,106,56,0.12))] border-b border-orange-100 px-3 py-2 text-[10px] font-bold text-slate-700 text-center">
+        DEMO · Bharat Field Grid · Call 112 in real emergencies.
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:22px_22px]">
         <AnimatePresence mode="wait">
           {/* ========== LIST ========== */}
           {stage === "list" && (

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, case, extract
 from app.models.report import Report
 from app.models.incident import Incident
-from app.models.verification import VerificationLog
+from app.models.verification_log import VerificationLog
 from app.models.user import User
 
 logger = logging.getLogger(__name__)

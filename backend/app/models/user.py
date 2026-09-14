@@ -2,10 +2,10 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Boolean, DateTime, Text, Integer
+    Column, String, Boolean, DateTime, Text, Integer, cast
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, foreign
 from app.database import Base
 
 
@@ -31,7 +31,12 @@ class User(Base):
     last_login = Column(DateTime, nullable=True)
 
     # Relationships
-    reports = relationship("Report", back_populates="reporter", lazy="dynamic")
+    reports = relationship(
+        "Report",
+        back_populates="reporter",
+        primaryjoin="foreign(Report.user_id) == cast(User.id, String)",
+        viewonly=True,
+    )
     alert_subscriptions = relationship("AlertSubscription", back_populates="user", lazy="dynamic")
 
     def __repr__(self):

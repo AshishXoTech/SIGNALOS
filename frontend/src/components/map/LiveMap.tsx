@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { api } from "@/lib/api-client";
+import { api, WS_URL } from "@/lib/api-client";
 import toast from "react-hot-toast";
 
 export interface MarkerData {
@@ -22,6 +22,24 @@ export interface LiveMapProps {
   className?: string;
 }
 
+type MapLibreModule = typeof import("maplibre-gl");
+type MapLibreMap = InstanceType<MapLibreModule["Map"]>;
+type MapLibreMarker = InstanceType<MapLibreModule["Marker"]>;
+type LiveReport = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  disaster_type?: string;
+  trust_score?: number;
+};
+type LiveIncident = {
+  id: string;
+  title?: string;
+  latitude: number;
+  longitude: number;
+  severity?: MarkerData["severity"];
+};
+
 export function LiveMap({
   markers = [],
   center = [78.9629, 22.5937], // India centroid [lng, lat]
@@ -30,14 +48,18 @@ export function LiveMap({
   className = "h-[360px] w-full rounded-xl border border-slate-200 overflow-hidden",
 }: LiveMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const markersRef = useRef<MapLibreMarker[]>([]);
   const onClickRef = useRef(onMarkerClick);
-  onClickRef.current = onMarkerClick;
+  const [centerLng, centerLat] = center;
 
   // --- Real-time State from Backend ---
-  const [liveReports, setLiveReports] = useState<any[]>([]);
-  const [liveIncidents, setLiveIncidents] = useState<any[]>([]);
+  const [liveReports, setLiveReports] = useState<LiveReport[]>([]);
+  const [liveIncidents, setLiveIncidents] = useState<LiveIncident[]>([]);
+
+  useEffect(() => {
+    onClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
 
   // 1. Map Initialization Effect
   useEffect(() => {
@@ -46,9 +68,9 @@ export function LiveMap({
 
     let cancelled = false;
 
-    import("maplibre-gl").then((mod: any) => {
+    import("maplibre-gl").then((mod) => {
       if (cancelled || !mapContainer.current || mapRef.current) return;
-      const maplibregl = mod.default || mod;
+      const maplibregl = mod;
 
       // OpenStreetMap raster tiles
       const map = new maplibregl.Map({
@@ -77,9 +99,9 @@ export function LiveMap({
             },
           ],
         },
-        center,
+        center: [centerLng, centerLat],
         zoom,
-        attributionControl: true,
+        attributionControl: {},
       });
 
       map.addControl(
@@ -99,41 +121,45 @@ export function LiveMap({
         mapRef.current = null;
       }
     };
-  }, [center[0], center[1], zoom]);
+  }, [centerLng, centerLat, zoom]);
 
   // 2. Fetch Data & Connect WebSocket
   useEffect(() => {
     // Initial fetch from backend
-    api.getReports().then((data: any) => setLiveReports(Array.isArray(data) ? data : [])).catch(() => {});
-    api.getIncidents().then((data: any) => setLiveIncidents(Array.isArray(data) ? data : [])).catch(() => {});
+    api.getReports().then((data) => setLiveReports(Array.isArray(data) ? data as LiveReport[] : [])).catch(() => {});
+    api.getIncidents().then((data) => setLiveIncidents(Array.isArray(data) ? data as LiveIncident[] : [])).catch(() => {});
 
     // Connect WebSocket
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8001/ws/live";
     let ws: WebSocket | null = null;
 
     try {
-      ws = new WebSocket(wsUrl);
+      ws = new WebSocket(WS_URL);
 
       ws.onmessage = (event) => {
         try {
-          const payload = JSON.parse(event.data);
+          const payload = JSON.parse(event.data) as { event?: string; data?: LiveReport & LiveIncident };
+
+          const data = payload.data;
+          if (!data) return;
 
           if (payload.event === "report.new") {
-            setLiveReports((prev) => [payload.data, ...prev]);
-            toast(`New Report: ${payload.data.disaster_type} (AI: ${payload.data.trust_score})`, { icon: "📍" });
+            const report = data as LiveReport;
+            setLiveReports((prev) => [report, ...prev]);
+            toast(`New Report: ${report.disaster_type} (AI: ${report.trust_score})`, { icon: "📍" });
           }
 
           if (payload.event === "incident.new" || payload.event === "incident.updated") {
+            const incident = data as LiveIncident;
             setLiveIncidents((prev) => {
-              const exists = prev.find((i) => i.id === payload.data.id);
-              if (exists) return prev.map((i) => (i.id === payload.data.id ? payload.data : i));
-              return [payload.data, ...prev];
+              const exists = prev.find((i) => i.id === incident.id);
+              if (exists) return prev.map((i) => (i.id === incident.id ? incident : i));
+              return [incident, ...prev];
             });
-            toast.error(`Incident Alert: ${payload.data.title}`);
+            toast.error(`Incident Alert: ${incident.title || "New incident"}`);
           }
-        } catch (e) {}
+        } catch {}
       };
-    } catch (e) {}
+    } catch {}
 
     return () => {
       if (ws) ws.close();
@@ -181,9 +207,10 @@ export function LiveMap({
 
     const finalMarkers = Array.from(mergedMarkers.values());
 
-    import("maplibre-gl").then((mod: any) => {
-      if (!mapRef.current) return;
-      const maplibregl = mod.default || mod;
+    import("maplibre-gl").then((mod) => {
+      const activeMap = mapRef.current;
+      if (!activeMap) return;
+      const maplibregl = mod;
 
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
@@ -233,7 +260,7 @@ export function LiveMap({
         const marker = new maplibregl.Marker({ element: el })
           .setLngLat([m.longitude, m.latitude])
           .setPopup(popup)
-          .addTo(mapRef.current);
+          .addTo(activeMap);
 
         markersRef.current.push(marker);
       });

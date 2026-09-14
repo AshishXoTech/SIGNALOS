@@ -54,7 +54,9 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
     """Login and get JWT token"""
     result = await db.execute(
         select(User).where(
-            (User.username == data.username) | (User.email == data.username)
+            (User.username == data.username)
+            | (User.email == data.username)
+            | (User.phone == data.username)
         )
     )
     user = result.scalar_one_or_none()
@@ -112,13 +114,13 @@ async def get_my_stats(
 
     verified_result = await db.execute(
         select(func.count(Report.id)).where(
-            Report.reporter_id == user.id,
+            Report.user_id == str(user.id),
             Report.status == "verified",
         )
     )
     debunked_result = await db.execute(
         select(func.count(Report.id)).where(
-            Report.reporter_id == user.id,
+            Report.user_id == str(user.id),
             Report.status == "debunked",
         )
     )

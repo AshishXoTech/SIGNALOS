@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Flame, MapPin, Clock, Search, ChevronRight, Filter
 } from "lucide-react";
 import { HAZARD_TYPES } from "@/lib/constants";
 import { formatTimeAgo } from "@/lib/utils";
+import { api } from "@/lib/api-client";
 
 const INCIDENTS = [
   {
@@ -64,6 +65,39 @@ const INCIDENTS = [
     reports: 3,
     created_at: new Date(Date.now() - 8 * 3600000).toISOString(),
   },
+  {
+    id: "INC-1037",
+    hazard: "cyclone",
+    severity: "high",
+    status: "response_active",
+    title: "Cyclonic winds damage coastal power corridor",
+    location: "Puri Coastal Grid, Odisha",
+    team: "Police Rapid Unit",
+    reports: 18,
+    created_at: new Date(Date.now() - 11 * 3600000).toISOString(),
+  },
+  {
+    id: "INC-1036",
+    hazard: "earthquake",
+    severity: "critical",
+    status: "triaged",
+    title: "Structural cracks reported across apartment block",
+    location: "Sikkim Market Road, Gangtok",
+    team: "NDRF Battalion 2",
+    reports: 31,
+    created_at: new Date(Date.now() - 15 * 3600000).toISOString(),
+  },
+  {
+    id: "INC-1035",
+    hazard: "fire",
+    severity: "moderate",
+    status: "closed",
+    title: "Warehouse smoke incident contained",
+    location: "Peenya Industrial Area, Bengaluru",
+    team: "Fire Service Echo",
+    reports: 9,
+    created_at: new Date(Date.now() - 26 * 3600000).toISOString(),
+  },
 ];
 
 const SEV: Record<string, string> = {
@@ -86,8 +120,28 @@ const STATUS_LABEL: Record<string, string> = {
 export default function IncidentsListPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [incidents, setIncidents] = useState(INCIDENTS);
 
-  const filtered = INCIDENTS.filter((i) => {
+  useEffect(() => {
+    api.getIncidents()
+      .then((data) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setIncidents((data as Record<string, unknown>[]).map((item) => ({
+          id: String(item.id),
+          hazard: String(item.disaster_type || "other"),
+          severity: String(item.severity || "medium"),
+          status: String(item.status || "active"),
+          title: String(item.title || "Incident"),
+          location: `${Number(item.latitude).toFixed(4)}, ${Number(item.longitude).toFixed(4)}`,
+          team: null,
+          reports: Number(item.report_count || 0),
+          created_at: String(item.created_at || item.last_updated || new Date().toISOString()),
+        })));
+      })
+      .catch(() => {});
+  }, []);
+
+  const filtered = incidents.filter((i) => {
     if (filter === "active" && i.status === "closed") return false;
     if (filter === "closed" && i.status !== "closed") return false;
     if (filter === "unassigned" && i.team) return false;

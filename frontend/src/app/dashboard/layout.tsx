@@ -3,7 +3,9 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Activity, CheckCircle2, LayoutDashboard, FileText, Flame, Users, ClipboardCheck, LogOut, Radio, ShieldCheck } from "lucide-react";
+import { Activity, CheckCircle2, LayoutDashboard, FileText, Flame, Users, ClipboardCheck, LogOut, Radio } from "lucide-react";
+import { SignalLogo } from "@/components/brand/SignalLogo";
+import { getRoleHomePath } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 
 const NAV = [
@@ -17,13 +19,26 @@ const NAV = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useStore();
+  const { user, logout, hydrate } = useStore();
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   useEffect(() => {
     if (!user && typeof window !== "undefined") {
       if (!localStorage.getItem("signal_user")) router.push("/login");
     }
   }, [user, router]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const homePath = getRoleHomePath(user.role);
+    if (homePath === "/responder" || (homePath !== "/dashboard" && pathname === "/dashboard")) {
+      router.replace(homePath);
+    }
+  }, [pathname, router, user]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -32,9 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <aside className="command-sidebar w-64 border-r border-slate-900 flex flex-col shrink-0 shadow-[18px_0_48px_rgba(15,23,42,0.18)] z-10">
           <div className="h-1.5 bg-[linear-gradient(90deg,#ff671f_0_33%,#ffffff_33%_66%,#046a38_66%_100%)]" />
           <div className="h-24 px-6 flex items-center gap-3 border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(255,103,31,0.20),transparent_46%),radial-gradient(circle_at_bottom_right,rgba(4,106,56,0.18),transparent_44%)]">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
+            <SignalLogo className="h-12 w-12 rounded-xl shadow-lg shadow-orange-500/25" />
             <div>
               <div className="text-[16px] font-black text-white leading-tight">Signal OS</div>
               <div className="text-[10px] font-black text-orange-200 uppercase tracking-[0.22em]">Bharat Command</div>

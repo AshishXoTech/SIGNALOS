@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     APP_PORT: int = 8000
     SECRET_KEY: str = "signal-os-dev-secret-key"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    MEDIA_DIR: str = "uploads"
 
     # AI Keys
     OPENAI_API_KEY: Optional[str] = None
